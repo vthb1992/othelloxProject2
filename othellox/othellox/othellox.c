@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+
+char board[676];
+
 int size_x, size_y;
 char white_positions[400][3];
 char black_positions[400][3];
@@ -90,20 +93,70 @@ void readFiles(char *initialbrd, char *evalparams) {
 			edgeValue = atoi(details);
 		}
 		else {
-		
+			//nth yet
 		}
 	}
-
 
 	fclose(file1);
 	fclose(file2);
 }
 
+int translateInputPosToIndex(char *pos) {
+	int letter = pos[0] - 96; 
+	int num, result;
+	if (strlen(pos) == 2) {
+		num = pos[1] - '0';
+	}
+	else {
+		num = (pos[1] - '0') * 10 + (pos[2] - '0');
+	}
+
+	result = (letter - 1) + (num - 1) * size_x;
+	return result;
+}
+
+char *translateIndexToOutputPos(int index) {
+	int letter = index + 1;
+	int num = 1;
+	while (letter > size_x) {
+		letter = letter - size_x;
+		num++;
+	}
+	char outputLetter = letter + 96;
+
+	char strNum[10];
+	sprintf(strNum, "%d", num);
+
+	char string[5];
+	string[0] = outputLetter;
+	string[1] = strNum[0];
+	if (num >= 10) {
+		string[2] = strNum[1];
+		string[3] = '\0';
+	}
+	else {
+		string[2] = '\0';
+	}
+
+	char *result = malloc(5);
+	strcpy(result, string);
+	return result;
+}
+
+void initBoard() {
+
+
+}
 int main(int argc, char **argv)
 {
 	readFiles(argv[1], argv[2]);
 
 	//printf("%d", maxBoards);
+	char *temp = translateIndexToOutputPos(11);
+	printf("%s", temp);
+	
+
+
 
 	getch();
 	return 0;
