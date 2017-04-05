@@ -2,12 +2,15 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define EMPTY 0
+#define BLACK 1
+#define WHITE 2
 
 char board[676];
 
 int size_x, size_y;
-char white_positions[400][3];
-char black_positions[400][3];
+char white_positions[400][5];
+char black_positions[400][5];
 int black_size, white_size;
 
 int maxDepth, maxBoards, cornerValue, edgeValue;
@@ -144,20 +147,38 @@ char *translateIndexToOutputPos(int index) {
 }
 
 void initBoard() {
+	for (int a = 0; a < size_x * size_y; a++) {
+		board[a] = EMPTY;
+	}
+	for (int i = 0; i < white_size; i++) {
+		board[translateInputPosToIndex(white_positions[i])] = WHITE;
 
+	}
+	for (int j = 0; j < black_size; j++) {
+		board[translateInputPosToIndex(black_positions[j])] = BLACK;
+	}
 
+}
+void printBoard() {
+	// A-Z on the x-axis(left to right), 1-26 on the y-axis(top to bottom)
+	int sizeOfArray = size_x * size_y;
+	for (int a = 0; a < sizeOfArray; a++) {
+		printf("%d", board[a]);
+		if ((a+1) % size_x == 0) {
+			printf("\n");
+		}
+	}
 }
 int main(int argc, char **argv)
 {
 	readFiles(argv[1], argv[2]);
 
-	//printf("%d", maxBoards);
-	char *temp = translateIndexToOutputPos(11);
-	printf("%s", temp);
+	initBoard();
+	printBoard();
 	
 
 
-
+	//printf("%d", maxBoards);
 	getch();
 	return 0;
 }
