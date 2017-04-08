@@ -8,14 +8,17 @@
 #define BLACK 1
 #define WHITE 2
 #define FLIP(x) (3-(x))  
-#define SMALLEST_FLOAT -1.0e34
-#define LARGEST_FLOAT 1.0e34
+#define SMALLEST_FLOAT -1.0e10
+#define LARGEST_FLOAT 1.0e10
 
 typedef enum { false, true } bool;
 
 const int DIRECTION[8][2] = { { 1, 0 },{ 1, 1 },{ 0, 1 },{ -1, 1 },{ -1, 0 },{ -1, -1 },{ 0, -1 },{ 1, -1 } };
 
 char board[676];
+
+//counting for output data analysis
+int numOfBoardsAccessed = 0;
 
 // initialbrd variables
 int sizeOfArray;
@@ -26,6 +29,10 @@ int black_size, white_size;
 
 // evalparams variables
 int maxDepth, maxBoards, cornerValue, edgeValue, bestMovesForColor, timeOut;
+
+//declaration of function due to being mutually recursive
+float getMax(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPieces, int depth, float alpha, float beta);
+float getMin(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPieces, int depth, float alpha, float beta);
 
 
 void printBoard(char *board) {
@@ -372,14 +379,97 @@ int flipPiecesOnBoard(char *board, int legalMove, int legalMoveFor) {
 	return totalFlips;
 }
 
-float getMax(char *Board, int turnColor, int numOfPlayerPieces, int numOfOppPieces, int depth, float alpha, float beta) {
+float getMax(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPieces, int depth, float alpha, float beta) {
+	if (numOfPlayerPieces == 0) { // lose!
+		return SMALLEST_FLOAT;
+	}
+	else if (numOfOppPieces == 0) {
+		return LARGEST_FLOAT;
+	}
 
+	if ((numOfPlayerPieces + numOfOppPieces) == sizeOfArray) { //end game
+		//return evaluateBoard(board, turnColor, numOfPlayerPieces, numOfOppPieces);
+		return 0.0;
+	}
+	if (depth == maxDepth) {
+		//return evaluateBoard(board, turnColor, numOfPlayerPieces, numOfOppPieces);
+		return 4;
+	}
 
+	float maxValue = SMALLEST_FLOAT;
+	float curValue = 0.0;
+	int numOfFlipped;
+	char mmBoard[676];
+
+	int legalMoves[350];
+	int numOfLegalMoves = 0;
+	findAllLegalMoves(board, turnColor, legalMoves, &numOfLegalMoves);
+
+	for (int i = 0; i < numOfLegalMoves; i++) {
+		copyBoardArray(board, mmBoard);
+		numOfFlipped = flipPiecesOnBoard(mmBoard, legalMoves[i], turnColor);
+		numOfBoardsAccessed++;
+
+		//printf("%d \n", numOfFlipped);printBoard(mmBoard);printf("\n");
+
+		curValue = getMin(mmBoard, FLIP(turnColor), numOfPlayerPieces + numOfFlipped + 1, numOfOppPieces - numOfFlipped, depth + 1, alpha, beta);
+		if (curValue > maxValue) {
+			maxValue = curValue;
+		}
+		if (maxValue >= beta) {
+			return maxValue;
+		}
+		if (maxValue > alpha) {
+			alpha = maxValue;
+		}
+	}
+	return maxValue;
 }
 
-float getMin(char *Board, int turnColor, int numOfPlayerPieces, int numOfOppPieces, int depth, float alpha, float beta) {
+float getMin(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPieces, int depth, float alpha, float beta) {
+	if (numOfPlayerPieces == 0) { // lose!
+		return SMALLEST_FLOAT;
+	}
+	else if (numOfOppPieces == 0) {
+		return LARGEST_FLOAT;
+	}
 
+	if ((numOfPlayerPieces + numOfOppPieces) == sizeOfArray) { //end game
+		//return evaluateBoard(board, turnColor, numOfPlayerPieces, numOfOppPieces);
+		return 0.0;
+	}
+	if (depth == maxDepth) {
+		//return evaluateBoard(board, turnColor, numOfPlayerPieces, numOfOppPieces);
+		return 3;
+	}
+	float minValue = LARGEST_FLOAT;
+	float curValue = 0.0;
+	int numOfFlipped;
+	char mmBoard[676];
 
+	int legalMoves[350];
+	int numOfLegalMoves = 0;
+	findAllLegalMoves(board, turnColor, legalMoves, &numOfLegalMoves);
+	
+	for (int i = 0; i < numOfLegalMoves; i++) {
+		copyBoardArray(board, mmBoard);
+		numOfFlipped = flipPiecesOnBoard(mmBoard, legalMoves[i], turnColor);
+		numOfBoardsAccessed++;
+
+		//printf("%d \n", numOfFlipped);printBoard(mmBoard);printf("\n");
+
+		curValue = getMax(mmBoard, FLIP(turnColor), numOfPlayerPieces - numOfFlipped, numOfOppPieces + numOfFlipped + 1, depth + 1, alpha, beta);
+		if (curValue < minValue) {
+			minValue = curValue;
+		}
+		if (minValue <= alpha) {
+			return minValue;
+		}
+		if (minValue < beta) {
+			beta = minValue;
+		}
+	}
+	return minValue;
 }
 
 void getMinimaxMoves() {
@@ -387,7 +477,6 @@ void getMinimaxMoves() {
 	int numOfBoards = 0;
 	float alpha = SMALLEST_FLOAT;
 	float beta = LARGEST_FLOAT;
-	float currentValue;
 	int numOfFlipped;
 	int numOfPlayerPieces, numOfOppPieces;
 	int turnColor = bestMovesForColor;
@@ -411,19 +500,15 @@ void getMinimaxMoves() {
 	for (int i = 0; i < numOfLegalMoves; i++) {
 		copyBoardArray(board, mmBoard);
 		numOfFlipped = flipPiecesOnBoard(mmBoard, legalMoves[i], turnColor);
-		
-		printf("%d \n", numOfFlipped);
-		printBoard(mmBoard);
-		printf("\n");
+		numOfBoardsAccessed++;
 
-		//valuesOfLegalMoves[i] = getMin(mmBoard, FLIP(turnColor), numOfPlayerPieces + numOfFlipped + 1, 
-		//	numOfOppPieces - numOfFlipped, depth + 1, alpha, beta);
+		//printf("%d \n", numOfFlipped);printBoard(mmBoard);printf("\n");
 
-		//printf("%d -> %f \n", i, valuesOfLegalMoves[i]);
+		valuesOfLegalMoves[i] = getMin(mmBoard, FLIP(turnColor), numOfPlayerPieces + numOfFlipped + 1, numOfOppPieces - numOfFlipped, depth + 1, alpha, beta);
+
+		printf("%d -> %f \n", legalMoves[i], valuesOfLegalMoves[i]);
 	}
 }
-
-
 
 int main(int argc, char **argv)
 {
@@ -432,6 +517,7 @@ int main(int argc, char **argv)
 	initBoard();
 	getMinimaxMoves();
 	
+	printf("%d", numOfBoardsAccessed);
 	//int b, w;
 	//countPieces(board, &b, &w);
 	//printf("%d", w);
