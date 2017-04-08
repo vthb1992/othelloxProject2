@@ -7,20 +7,36 @@
 #define EMPTY 0
 #define BLACK 1
 #define WHITE 2
+#define FLIP(x) (3-(x))  
+#define SMALLEST_FLOAT -1.0e34
+#define LARGEST_FLOAT 1.0e34
 
 typedef enum { false, true } bool;
 
 const int DIRECTION[8][2] = { { 1, 0 },{ 1, 1 },{ 0, 1 },{ -1, 1 },{ -1, 0 },{ -1, -1 },{ 0, -1 },{ 1, -1 } };
 
 char board[676];
-char lmBoard[676];
 
+// initialbrd variables
+int sizeOfArray;
 int size_x, size_y;
 char white_positions[350][5];
 char black_positions[350][5];
 int black_size, white_size;
 
-int maxDepth, maxBoards, cornerValue, edgeValue;
+// evalparams variables
+int maxDepth, maxBoards, cornerValue, edgeValue, bestMovesForColor, timeOut;
+
+
+void printBoard(char *board) {
+	// A-Z on the x-axis(left to right), 1-26 on the y-axis(top to bottom)
+	for (int a = 0; a < sizeOfArray; a++) {
+		printf("%d", board[a]);
+		if ((a + 1) % size_x == 0) {
+			printf("\n");
+		}
+	}
+}
 
 char *trimWhiteSpace(char *str)
 {
@@ -102,6 +118,17 @@ void readFiles(char *initialbrd, char *evalparams) {
 		else if (strcmp(label, "EdgeValue") == 0){
 			edgeValue = atoi(details);
 		}
+		else if (strcmp(label, "Color") == 0) {
+			if (strcmp(details, "Black") == 0) {
+				bestMovesForColor = 1;
+			}
+			else {
+				bestMovesForColor = 2;
+			}
+		}
+		else if (strcmp(label, "Timeout") == 0) {
+			timeOut = atoi(details);
+		}
 		else {
 			//nth yet
 		}
@@ -154,21 +181,15 @@ char *translateIndexToOutputPos(int index) {
 }
 
 void initBoard() {
-	for (int a = 0; a < size_x * size_y; a++) {
+	sizeOfArray = size_x * size_y;
+	for (int a = 0; a < sizeOfArray; a++) {
 		board[a] = EMPTY;
-		
-		lmBoard[a] = EMPTY;
 	}
 	for (int i = 0; i < white_size; i++) {
 		board[translateInputPosToIndex(white_positions[i])] = WHITE;
-		
-		lmBoard[translateInputPosToIndex(white_positions[i])] = WHITE;
-
 	}
 	for (int j = 0; j < black_size; j++) {
 		board[translateInputPosToIndex(black_positions[j])] = BLACK;
-		
-		lmBoard[translateInputPosToIndex(black_positions[j])] = BLACK;
 	}
 }
 
@@ -236,36 +257,187 @@ bool isLegalMove(char *board, int index, int legalMoveFor) { //legal move for wh
 	return false;
 }
 
-bool findAllLegalMoves(char *board, int legalMoveFor, char *lmBoard) {
+bool findAllLegalMoves(char *board, int legalMoveFor, int *lm, int *counter) {
 	bool result = false;
-	int sizeOfArray = size_x * size_y;
+	int count = 0;
 	for (int i = 0; i < sizeOfArray; i++) {
 		if (isLegalMove(board, i, legalMoveFor)) {
 				result = true;
-				lmBoard[i] = 3;
+				lm[count] = i;
+				count++;
 		}
 	}
+	*counter = count;
 	return result;
 }
 
-void printBoard() {
-	// A-Z on the x-axis(left to right), 1-26 on the y-axis(top to bottom)
-	int sizeOfArray = size_x * size_y;
-	for (int a = 0; a < sizeOfArray; a++) {
-		printf("%d", lmBoard[a]);
-		if ((a+1) % size_x == 0) {
-			printf("\n");
+void countPieces(char *board, int *numBlack, int *numWhite) {
+	int black = 0;
+	int white = 0;
+	for (int i = 0; i < sizeOfArray; i++) {
+		if (board[i] == BLACK) {
+			black++;
+		}
+		else if (board[i] == WHITE) {
+			white++;
 		}
 	}
+	*numBlack = black;
+	*numWhite = white;
 }
+
+void copyBoardArray(char *from, char *to) {
+	for (int i = 0; i < sizeOfArray; i++) {
+		to[i] = from[i];
+	}
+}
+
+int flipPiecesOnBoard(char *board, int legalMove, int legalMoveFor) {
+	board[legalMove] = legalMoveFor;
+
+	int x = legalMove + 1;
+	int y = 1;
+	while (x > size_x) {
+		x = x - size_x;
+		y++;
+	}
+
+	int totalFlips = 0;
+
+	for (int dir = 0; dir < 8; dir++) { // checking for legal moves in all 8 directions, horizontal, vertial and diagonal
+		int dx = DIRECTION[dir][0];
+		int dy = DIRECTION[dir][1];
+		int tempx = x;
+		int tempy = y;
+		int numFlipped = 0;
+
+		bool cont = true;
+		while (cont) {
+			tempx = tempx + dx;
+			tempy = tempy + dy;
+
+			if (tempx <= 0 || tempx > size_x || tempy <= 0 || tempy > size_y) {
+				cont = false;
+				continue;
+			}
+
+			int tempIndex = (tempx - 1) + (tempy - 1) * size_x;
+			if (board[tempIndex] == EMPTY) {
+				cont = false;
+			}
+			else if (board[tempIndex] == WHITE) {
+				if (legalMoveFor == BLACK) {
+					numFlipped++;
+				}
+				else {
+					if (numFlipped == 0) {
+						cont = false;
+					}
+					else {
+						totalFlips += numFlipped;
+						int flipIndex;
+						while (numFlipped > 0) {
+							tempx = tempx - dx;
+							tempy = tempy - dy;
+							flipIndex = (tempx - 1) + (tempy - 1) * size_x;
+							board[flipIndex] = FLIP(board[flipIndex]);
+							numFlipped--;
+						}
+					}
+				}
+			}
+			else {
+				if (legalMoveFor == WHITE) {
+					numFlipped++;
+				}
+				else {
+					if (numFlipped == 0) {
+						cont = false;
+					}
+					else {
+						totalFlips += numFlipped;
+						int flipIndex;
+						while (numFlipped > 0) {
+							tempx = tempx - dx;
+							tempy = tempy - dy;
+							flipIndex = (tempx - 1) + (tempy - 1) * size_x;
+							board[flipIndex] = FLIP(board[flipIndex]);
+							numFlipped--;
+						}
+					}
+				}
+			}
+		}
+	}
+	return totalFlips;
+}
+
+float getMax(char *Board, int turnColor, int numOfPlayerPieces, int numOfOppPieces, int depth, float alpha, float beta) {
+
+
+}
+
+float getMin(char *Board, int turnColor, int numOfPlayerPieces, int numOfOppPieces, int depth, float alpha, float beta) {
+
+
+}
+
+void getMinimaxMoves() {
+	int depth = 0;
+	int numOfBoards = 0;
+	float alpha = SMALLEST_FLOAT;
+	float beta = LARGEST_FLOAT;
+	float currentValue;
+	int numOfFlipped;
+	int numOfPlayerPieces, numOfOppPieces;
+	int turnColor = bestMovesForColor;
+
+	char mmBoard[676];
+
+	int legalMoves[350];
+	float valuesOfLegalMoves[350];
+	int numOfLegalMoves = 0;
+	findAllLegalMoves(board, turnColor, legalMoves, &numOfLegalMoves);
+
+	if (turnColor == BLACK) {
+		numOfPlayerPieces = black_size;
+		numOfOppPieces = white_size;
+	}
+	else {
+		numOfPlayerPieces = white_size;
+		numOfOppPieces = black_size;
+	}
+
+	for (int i = 0; i < numOfLegalMoves; i++) {
+		copyBoardArray(board, mmBoard);
+		numOfFlipped = flipPiecesOnBoard(mmBoard, legalMoves[i], turnColor);
+		
+		printf("%d \n", numOfFlipped);
+		printBoard(mmBoard);
+		printf("\n");
+
+		//valuesOfLegalMoves[i] = getMin(mmBoard, FLIP(turnColor), numOfPlayerPieces + numOfFlipped + 1, 
+		//	numOfOppPieces - numOfFlipped, depth + 1, alpha, beta);
+
+		//printf("%d -> %f \n", i, valuesOfLegalMoves[i]);
+	}
+}
+
+
+
 int main(int argc, char **argv)
 {
 	readFiles(argv[1], argv[2]);
 
 	initBoard();
+	getMinimaxMoves();
 	
-	findAllLegalMoves(board, 2, lmBoard);
-	printBoard();
+	//int b, w;
+	//countPieces(board, &b, &w);
+	//printf("%d", w);
+
+	//findAllLegalMoves(board, 2, lmBoard);
+	//printBoard();
 
 	//printf("%d", maxBoards);
 	getch();
