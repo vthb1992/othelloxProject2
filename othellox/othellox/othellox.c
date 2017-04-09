@@ -385,7 +385,7 @@ int flipPiecesOnBoard(char *board, int legalMove, int legalMoveFor) {
 float evaluateBoard(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPieces) {
 	//difference in pieces between player making the move and opponent
 	//1st evaluation function
-	float diffInPiecesValue = (float)100 * (numOfPlayerPieces - numOfOppPieces) / numOfPlayerPieces + numOfOppPieces;
+	float diffInPiecesValue = (float)100 * (numOfPlayerPieces - numOfOppPieces) / (numOfPlayerPieces + numOfOppPieces);
 
 	//relative difference in number of legal moves for both players
 	//2nd evaluation function
@@ -399,20 +399,104 @@ float evaluateBoard(char *board, int turnColor, int numOfPlayerPieces, int numOf
 
 	float diffInMovesValue;
 	if (numOfLegalMovesForMax + numOfLegalMovesForMin != 0) {
-		diffInMovesValue = (float)100 * (numOfLegalMovesForMax - numOfLegalMovesForMin) / numOfLegalMovesForMax + numOfLegalMovesForMin;
+		diffInMovesValue = (float)100 * (numOfLegalMovesForMax - numOfLegalMovesForMin) / (numOfLegalMovesForMax + numOfLegalMovesForMin);
 	}
 	else {
 		diffInMovesValue = 0.0;
 	}
 
-	//corners and edges captured
+	//corners captured
 	//3rd evaluation function
+	float cornerHeuristicValue = 0.0;
+	float cornerValueForMax = 0.0, cornerValueForMin = 0.0;
+	int corners[4];
 
+	if (size_x > 1 && size_y > 1) {
+		corners[0] = 0;
+		corners[1] = size_x - 1;
+		corners[2] = (size_y - 1) * size_x;
+		corners[3] = size_x * size_y - 1;
+		for (int i = 0; i < 4; i++) {
+			if (board[corners[i]] == BLACK) {
+				if (bestMovesForColor == BLACK) {
+					cornerValueForMax += 1.0;
+				}
+				else {
+					cornerValueForMin += 1.0;
+				}
+			}
+			else if (board[corners[i]] == WHITE) {
+				if (bestMovesForColor == WHITE) {
+					cornerValueForMax += 1.0;
+				}
+				else {
+					cornerValueForMin += 1.0;
+				}
+			}
+		}
+		if (cornerValueForMax + cornerValueForMin != 0.0) {
+			cornerHeuristicValue = (float)100 * (cornerValueForMax - cornerValueForMin) / (cornerValueForMax + cornerValueForMin);
+		}
+	}
+	
+	//edges captured
+	//4th evaluation function
+	float edgesHeuristicValue = 0.0;
+	float edgesValueForMax = 0.0, edgesValueForMin = 0.0;
+	int edges[100];
+	int edgesCount = 0;
+
+	if (size_x > 1 && size_y > 1) {
+		for (int i = corners[0] + 1; i < corners[1]; i++) {
+			edges[edgesCount] = i;
+			edgesCount++;
+		}
+		for (int i = corners[1] + size_x; i < corners[3]; i += size_x) {
+			edges[edgesCount] = i;
+			edgesCount++;
+		}
+		for (int i = corners[0] + size_x; i < corners[2]; i += size_x) {
+			edges[edgesCount] = i;
+			edgesCount++;
+		}
+		for (int i = corners[2] + 1; i < corners[3]; i++) {
+			edges[edgesCount] = i;
+			edgesCount++;
+		}
+		
+		for (int i = 0; i < edgesCount; i++) {
+			if (board[edges[i]] == BLACK) {
+				if (bestMovesForColor == BLACK) {
+					edgesValueForMax += 1.0;
+				}
+				else {
+					edgesValueForMin += 1.0;
+				}
+			}
+			else if (board[edges[i]] == WHITE) {
+				if (bestMovesForColor == WHITE) {
+					edgesValueForMax += 1.0;
+				}
+				else {
+					edgesValueForMin += 1.0;
+				}
+			}
+		}
+		if (edgesValueForMax + edgesValueForMin != 0.0) {
+			edgesHeuristicValue = (float)100 * (edgesValueForMax - edgesValueForMin) / (edgesValueForMax + edgesValueForMin);
+		}
+	}
 
 	//final weighted score
-	float score = diffInPiecesValue + diffInMovesValue;
-	return score;
+	float w1 = 1.0, w2 = 5.0, w3 = (float)cornerValue, w4 = (float)edgeValue;
+	float score = w1 * diffInPiecesValue + w2 * diffInMovesValue + w3 * cornerHeuristicValue + w4 * edgesHeuristicValue;
 
+	//printf("%f -- ", diffInPiecesValue);
+	//printf("%f -- ", diffInMovesValue);
+	//printf("%f -- ", cornerHeuristicValue);
+	//printf("%f\n", edgesHeuristicValue);
+	//printBoard(board);
+	return score;
 }
 
 float getMax(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPieces, int depth, float alpha, float beta, bool isPassedPrev) {
@@ -429,7 +513,6 @@ float getMax(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPiec
 	}
 
 	if ((numOfPlayerPieces + numOfOppPieces) == sizeOfArray) { //end game
-		//return evaluateEndGameBoard(board, turnColor, numOfPlayerPieces, numOfOppPieces);
 		return evaluateBoard(board, turnColor, numOfPlayerPieces, numOfOppPieces);
 	}
 	if (depth == maxDepth) {
@@ -467,8 +550,6 @@ float getMax(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPiec
 		}
 		copyBoardArray(board, mmBoard);
 		numOfFlipped = flipPiecesOnBoard(mmBoard, legalMoves[i], turnColor);
-		
-		//printf("%d \n", numOfFlipped);printBoard(mmBoard);printf("\n");
 
 		curValue = getMin(mmBoard, FLIP(turnColor), numOfPlayerPieces + numOfFlipped + 1, 
 			numOfOppPieces - numOfFlipped, depth + 1, alpha, beta, false);
@@ -499,7 +580,6 @@ float getMin(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPiec
 	}
 
 	if ((numOfPlayerPieces + numOfOppPieces) == sizeOfArray) { //end game
-		//return evaluateBoard(board, turnColor, numOfPlayerPieces, numOfOppPieces);
 		return evaluateBoard(board, turnColor, numOfPlayerPieces, numOfOppPieces);
 	}
 	if (depth == maxDepth) {
@@ -537,8 +617,6 @@ float getMin(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPiec
 		}
 		copyBoardArray(board, mmBoard);
 		numOfFlipped = flipPiecesOnBoard(mmBoard, legalMoves[i], turnColor);
-
-		//printf("%d \n", numOfFlipped);printBoard(mmBoard);printf("\n");
 
 		curValue = getMax(mmBoard, FLIP(turnColor), numOfPlayerPieces - numOfFlipped, 
 			numOfOppPieces + numOfFlipped + 1, depth + 1, alpha, beta, false);
@@ -589,8 +667,6 @@ void getMinimaxMoves(int *bestMoves, int *bmSize) {
 		}
 		copyBoardArray(board, mmBoard);
 		numOfFlipped = flipPiecesOnBoard(mmBoard, legalMoves[i], turnColor);
-
-		//printf("%d \n", numOfFlipped);printBoard(mmBoard);printf("\n");
 
 		valuesOfLegalMoves[i] = getMin(mmBoard, FLIP(turnColor), numOfPlayerPieces + numOfFlipped + 1, 
 			numOfOppPieces - numOfFlipped, depth + 1, alpha, beta, false);
