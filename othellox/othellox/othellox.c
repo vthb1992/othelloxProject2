@@ -40,7 +40,8 @@ float getMin(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPiec
 
 void printBoard(char *board) {
 	// A-Z on the x-axis(left to right), 1-26 on the y-axis(top to bottom)
-	for (int a = 0; a < sizeOfArray; a++) {
+	int a;
+	for (a = 0; a < sizeOfArray; a++) {
 		printf("%d", board[a]);
 		if ((a + 1) % size_x == 0) {
 			printf("\n");
@@ -191,15 +192,16 @@ char *translateIndexToOutputPos(int index) {
 }
 
 void initBoard() {
+	int i;
 	sizeOfArray = size_x * size_y;
-	for (int a = 0; a < sizeOfArray; a++) {
-		board[a] = EMPTY;
+	for (i = 0; i < sizeOfArray; i++) {
+		board[i] = EMPTY;
 	}
-	for (int i = 0; i < white_size; i++) {
+	for (i = 0; i < white_size; i++) {
 		board[translateInputPosToIndex(white_positions[i])] = WHITE;
 	}
-	for (int j = 0; j < black_size; j++) {
-		board[translateInputPosToIndex(black_positions[j])] = BLACK;
+	for (i = 0; i < black_size; i++) {
+		board[translateInputPosToIndex(black_positions[i])] = BLACK;
 	}
 }
 
@@ -214,8 +216,8 @@ bool isLegalMove(char *board, int index, int legalMoveFor) { //legal move for wh
 	if (board[index] != EMPTY) {
 		return false;
 	}
-	
-	for (int dir = 0; dir < 8; dir++) { // checking for legal moves in all 8 directions, horizontal, vertial and diagonal
+	int dir;
+	for (dir = 0; dir < 8; dir++) { // checking for legal moves in all 8 directions, horizontal, vertial and diagonal
 		int dx = DIRECTION[dir][0];
 		int dy = DIRECTION[dir][1];
 		int tempx = x;
@@ -270,7 +272,8 @@ bool isLegalMove(char *board, int index, int legalMoveFor) { //legal move for wh
 bool findAllLegalMoves(char *board, int legalMoveFor, int *lm, int *counter) {
 	bool result = false;
 	int count = 0;
-	for (int i = 0; i < sizeOfArray; i++) {
+	int i;
+	for (i = 0; i < sizeOfArray; i++) {
 		if (isLegalMove(board, i, legalMoveFor)) {
 				result = true;
 				lm[count] = i;
@@ -284,7 +287,8 @@ bool findAllLegalMoves(char *board, int legalMoveFor, int *lm, int *counter) {
 void countPieces(char *board, int *numBlack, int *numWhite) {
 	int black = 0;
 	int white = 0;
-	for (int i = 0; i < sizeOfArray; i++) {
+	int i;
+	for (i = 0; i < sizeOfArray; i++) {
 		if (board[i] == BLACK) {
 			black++;
 		}
@@ -297,7 +301,8 @@ void countPieces(char *board, int *numBlack, int *numWhite) {
 }
 
 void copyBoardArray(char *from, char *to) {
-	for (int i = 0; i < sizeOfArray; i++) {
+	int i;
+	for (i = 0; i < sizeOfArray; i++) {
 		to[i] = from[i];
 	}
 }
@@ -313,8 +318,8 @@ int flipPiecesOnBoard(char *board, int legalMove, int legalMoveFor) {
 	}
 
 	int totalFlips = 0;
-
-	for (int dir = 0; dir < 8; dir++) { // checking for legal moves in all 8 directions, horizontal, vertial and diagonal
+	int dir;
+	for (dir = 0; dir < 8; dir++) { // checking for legal moves in all 8 directions, horizontal, vertial and diagonal
 		int dx = DIRECTION[dir][0];
 		int dy = DIRECTION[dir][1];
 		int tempx = x;
@@ -416,8 +421,9 @@ float evaluateBoard(char *board, int turnColor, int numOfPlayerPieces, int numOf
 		corners[1] = size_x - 1;
 		corners[2] = (size_y - 1) * size_x;
 		corners[3] = size_x * size_y - 1;
-		for (int i = 0; i < 4; i++) {
-			if (board[corners[i]] == BLACK) {
+		int j;
+		for (j = 0; j < 4; j++) {
+			if (board[corners[j]] == BLACK) {
 				if (bestMovesForColor == BLACK) {
 					cornerValueForMax += 1.0;
 				}
@@ -425,7 +431,7 @@ float evaluateBoard(char *board, int turnColor, int numOfPlayerPieces, int numOf
 					cornerValueForMin += 1.0;
 				}
 			}
-			else if (board[corners[i]] == WHITE) {
+			else if (board[corners[j]] == WHITE) {
 				if (bestMovesForColor == WHITE) {
 					cornerValueForMax += 1.0;
 				}
@@ -447,24 +453,25 @@ float evaluateBoard(char *board, int turnColor, int numOfPlayerPieces, int numOf
 	int edgesCount = 0;
 
 	if (size_x > 1 && size_y > 1) {
-		for (int i = corners[0] + 1; i < corners[1]; i++) {
+		int i;
+		for (i = corners[0] + 1; i < corners[1]; i++) {
 			edges[edgesCount] = i;
 			edgesCount++;
 		}
-		for (int i = corners[1] + size_x; i < corners[3]; i += size_x) {
+		for (i = corners[1] + size_x; i < corners[3]; i += size_x) {
 			edges[edgesCount] = i;
 			edgesCount++;
 		}
-		for (int i = corners[0] + size_x; i < corners[2]; i += size_x) {
+		for (i = corners[0] + size_x; i < corners[2]; i += size_x) {
 			edges[edgesCount] = i;
 			edgesCount++;
 		}
-		for (int i = corners[2] + 1; i < corners[3]; i++) {
+		for (i = corners[2] + 1; i < corners[3]; i++) {
 			edges[edgesCount] = i;
 			edgesCount++;
 		}
 		
-		for (int i = 0; i < edgesCount; i++) {
+		for (i = 0; i < edgesCount; i++) {
 			if (board[edges[i]] == BLACK) {
 				if (bestMovesForColor == BLACK) {
 					edgesValueForMax += 1.0;
@@ -542,8 +549,8 @@ float getMax(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPiec
 		}
 		return maxValue;
 	}
-
-	for (int i = 0; i < numOfLegalMoves; i++) {
+	int i;
+	for (i = 0; i < numOfLegalMoves; i++) {
 		if (numOfBoardsAccessed >= maxBoards) {
 			isEntireSpace = false;
 			break;
@@ -609,8 +616,8 @@ float getMin(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPiec
 		}
 		return minValue;
 	}
-
-	for (int i = 0; i < numOfLegalMoves; i++) {
+	int i;
+	for (i = 0; i < numOfLegalMoves; i++) {
 		if (numOfBoardsAccessed >= maxBoards) {
 			isEntireSpace = false;
 			break;
@@ -660,8 +667,8 @@ void getMinimaxMoves(int *bestMoves, int *bmSize) {
 		numOfPlayerPieces = white_size;
 		numOfOppPieces = black_size;
 	}
-
-	for (int i = 0; i < numOfLegalMoves; i++) {
+	int i;
+	for (i = 0; i < numOfLegalMoves; i++) {
 		if (numOfBoardsAccessed >= maxBoards) {
 			break;
 		}
@@ -678,7 +685,7 @@ void getMinimaxMoves(int *bestMoves, int *bmSize) {
 		printf("%d -> %f \n", legalMoves[i], valuesOfLegalMoves[i]);
 	}
 
-	for (int i = 0; i < numOfLegalMoves; i++) {
+	for (i = 0; i < numOfLegalMoves; i++) {
 		if (valuesOfLegalMoves[i] == highestValue) {
 			bestMoves[bestMovesCount] = legalMoves[i];
 			bestMovesCount++;
@@ -702,7 +709,8 @@ int main(int argc, char **argv)
 	elapsedTimeInSec = (double)(end - begin) / CLOCKS_PER_SEC;
 
 	printf("Best moves: {");
-	for (int i = 0; i < numOfBestMoves; i++) {
+	int i;
+	for (i = 0; i < numOfBestMoves; i++) {
 		if (i == numOfBestMoves - 1) {
 			printf("%s}\n", translateIndexToOutputPos(bestMoves[i]));
 		}
