@@ -88,6 +88,17 @@ void readFiles(char *initialbrd, char *evalparams) {
 			size_x = atoi(x_temp);
 			size_y = atoi(y_temp);
 		}
+		else if (strcmp(label, "Color") == 0) {
+			if (strcmp(details, "Black") == 0) {
+				bestMovesForColor = 1;
+			}
+			else {
+				bestMovesForColor = 2;
+			}
+		}
+		else if (strcmp(label, "Timeout") == 0) {
+			timeOut = atoi(details);
+		}
 		else {
 			int count = 0;
 			char *pos = trimWhiteSpace(strtok(details, "{}"));
@@ -128,17 +139,6 @@ void readFiles(char *initialbrd, char *evalparams) {
 		}
 		else if (strcmp(label, "EdgeValue") == 0){
 			edgeValue = atoi(details);
-		}
-		else if (strcmp(label, "Color") == 0) {
-			if (strcmp(details, "Black") == 0) {
-				bestMovesForColor = 1;
-			}
-			else {
-				bestMovesForColor = 2;
-			}
-		}
-		else if (strcmp(label, "Timeout") == 0) {
-			timeOut = atoi(details);
 		}
 		else {
 			//nth yet
