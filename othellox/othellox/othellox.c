@@ -159,16 +159,16 @@ int translateInputPosToIndex(char *pos) {
 		num = (pos[1] - '0') * 10 + (pos[2] - '0');
 	}
 
-	result = (letter - 1) + (num - 1) * size_x;
+	result = (num - 1) + (letter - 1) * size_x;
 	return result;
 }
 
 char *translateIndexToOutputPos(int index) {
-	int letter = index + 1;
-	int num = 1;
-	while (letter > size_x) {
-		letter = letter - size_x;
-		num++;
+	int num = index + 1;
+	int letter = 1;
+	while (num > size_x) {
+		num = num - size_x;
+		letter++;
 	}
 	char outputLetter = letter + 96;
 
@@ -701,6 +701,8 @@ int main(int argc, char **argv)
 	readFiles(argv[1], argv[2]);
 	initBoard();
 
+	//printBoard(board);
+
 	int bestMoves[350];
 	int numOfBestMoves = 0;
 	getMinimaxMoves(bestMoves, &numOfBestMoves);
@@ -728,7 +730,7 @@ int main(int argc, char **argv)
 	}
 	printf("\n");
 	printf("Elapsed time in seconds: %f", elapsedTimeInSec);
-
+	
 	getch();
 	return 0;
 }
