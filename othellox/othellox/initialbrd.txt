@@ -1,5 +1,6 @@
 Size: 10,8
-White: { d4,d5,d6,e5,e6 }
-Black: { e4 }
-Color: Black
-Timeout: 10
+White: { d1,e1,f1,g1,h1,b2,c2,d2,e2,f2,g2,h2,b3,d3,f3,h3,c4,e4,f4,h4,c5,d5,e5,f5,h5,c6,d6,e6,f6,g6,h6,c7,e7,f7,g7,h7,b8,c8,e8,f8,g8,h8,c9,d9,f9,b10,c10,d10,e10,f10 }
+Black: { a1,b1,c1,a2,a3,c3,e3,g3,a4,b4,d4,g4,a5,b5,g5,a6,b6,a7,b7,d7,a8,d8,a9,e9,a10 }
+Color: White
+Timeout: 120
+

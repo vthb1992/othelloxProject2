@@ -109,7 +109,7 @@ void readFiles(char *initialbrd, char *evalparams) {
 				if (strcmp(label, "White") == 0) {
 					strcpy(white_positions[count],posInv);
 				}
-				else {
+				else if (strcmp(label, "Black") == 0) {
 					strcpy(black_positions[count],posInv);
 				}
 				posInv = strtok(NULL, ",");
@@ -118,7 +118,7 @@ void readFiles(char *initialbrd, char *evalparams) {
 			if (strcmp(label, "White") == 0) {
 				white_size = count;
 			}
-			else {
+			else if(strcmp(label, "Black") == 0) {
 				black_size = count;
 			}
 		}
