@@ -52,7 +52,9 @@ void printBoard(char *board) {
 char *trimWhiteSpace(char *str)
 {
 	char *end;
-
+	if (str == NULL) {
+		return str;
+	}
 	// Trim leading space
 	while (isspace((unsigned char)*str)) {
 		str++;
@@ -701,7 +703,7 @@ int main(int argc, char **argv)
 	readFiles(argv[1], argv[2]);
 	initBoard();
 
-	//printBoard(board);
+	printBoard(board);
 
 	int bestMoves[350];
 	int numOfBestMoves = 0;
@@ -711,15 +713,21 @@ int main(int argc, char **argv)
 	elapsedTimeInSec = (double)(end - begin) / CLOCKS_PER_SEC;
 
 	printf("Best moves: {");
-	int i;
-	for (i = 0; i < numOfBestMoves; i++) {
-		if (i == numOfBestMoves - 1) {
-			printf("%s}\n", translateIndexToOutputPos(bestMoves[i]));
-		}
-		else {
-			printf("%s,", translateIndexToOutputPos(bestMoves[i]));
+	if (numOfBestMoves == 0) {
+		printf("na}\n");
+	}
+	else {
+		int i;
+		for (i = 0; i < numOfBestMoves; i++) {
+			if (i == numOfBestMoves - 1) {
+				printf("%s}\n", translateIndexToOutputPos(bestMoves[i]));
+			}
+			else {
+				printf("%s,", translateIndexToOutputPos(bestMoves[i]));
+			}
 		}
 	}
+	
 	printf("Number of boards assessed: %d\n", numOfBoardsAccessed);
 	printf("Depth of boards: %d\n", depthOfBoards);
 	if (isEntireSpace) {

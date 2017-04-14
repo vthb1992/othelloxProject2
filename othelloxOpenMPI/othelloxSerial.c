@@ -60,6 +60,10 @@ long long wall_clock_time() {
 char *trimWhiteSpace(char *str) {
 	char *end;
 
+	if (str == NULL) {
+		return str;
+	}
+	
 	// Trim leading space
 	while (isspace((unsigned char)*str)) {
 		str++;
@@ -87,16 +91,16 @@ int translateInputPosToIndex(char *pos) {
 		num = (pos[1] - '0') * 10 + (pos[2] - '0');
 	}
 
-	result = (letter - 1) + (num - 1) * size_x;
+	result = (num - 1) + (letter - 1) * size_x;
 	return result;
 }
 
 char *translateIndexToOutputPos(int index) {
-	int letter = index + 1;
-	int num = 1;
-	while (letter > size_x) {
-		letter = letter - size_x;
-		num++;
+	int num = index + 1;
+	int letter = 1;
+	while (num > size_x) {
+		num = num - size_x;
+		letter++;
 	}
 	char outputLetter = letter + 96;
 
@@ -767,15 +771,21 @@ void master(char *initialbrd, char *evalparams){
 	elapsedTimeInSec = (double)(end - begin) / CLOCKS_PER_SEC;
 	
 	printf("Best moves: {");
-	int i;
-	for (i = 0; i < numOfBestMoves; i++) {
-		if (i == numOfBestMoves - 1) {
-			printf("%s}\n", translateIndexToOutputPos(bestMoves[i]));
-		}
-		else {
-			printf("%s,", translateIndexToOutputPos(bestMoves[i]));
+	if (numOfBestMoves == 0) {
+		printf("na}\n");
+	}
+	else {
+		int i;
+		for (i = 0; i < numOfBestMoves; i++) {
+			if (i == numOfBestMoves - 1) {
+				printf("%s}\n", translateIndexToOutputPos(bestMoves[i]));
+			}
+			else {
+				printf("%s,", translateIndexToOutputPos(bestMoves[i]));
+			}
 		}
 	}
+	
 	printf("Number of boards assessed: %d\n", numOfBoardsAccessed);
 	printf("Depth of boards: %d\n", depthOfBoards);
 	if (isEntireSpace) {
