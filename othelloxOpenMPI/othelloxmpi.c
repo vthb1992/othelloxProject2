@@ -33,7 +33,7 @@ int black_size, white_size;
 int maxDepth, maxBoards, cornerValue, edgeValue, bestMovesForColor, timeOut;
 
 
-/* 
+/*
 Determines the current time
 */
 long long wall_clock_time() {
@@ -50,7 +50,9 @@ long long wall_clock_time() {
 
 char *trimWhiteSpace(char *str) {
 	char *end;
-
+	if (str == NULL) {
+		return str;
+	}
 	// Trim leading space
 	while (isspace((unsigned char)*str)) {
 		str++;
@@ -69,7 +71,7 @@ char *trimWhiteSpace(char *str) {
 }
 
 int translateInputPosToIndex(char *pos) {
-	int letter = pos[0] - 96; 
+	int letter = pos[0] - 96;
 	int num, result;
 	if (strlen(pos) == 2) {
 		num = pos[1] - '0';
@@ -78,16 +80,16 @@ int translateInputPosToIndex(char *pos) {
 		num = (pos[1] - '0') * 10 + (pos[2] - '0');
 	}
 
-	result = (letter - 1) + (num - 1) * size_x;
+	result = (num - 1) + (letter - 1) * size_x;
 	return result;
 }
 
 char *translateIndexToOutputPos(int index) {
-	int letter = index + 1;
-	int num = 1;
-	while (letter > size_x) {
-		letter = letter - size_x;
-		num++;
+	int num = index + 1;
+	int letter = 1;
+	while (num > size_x) {
+		num = num - size_x;
+		letter++;
 	}
 	char outputLetter = letter + 96;
 
@@ -126,14 +128,14 @@ void readFiles(char *initialbrd, char *evalparams) {
 	char *label, *details;
 	FILE *file1 = fopen(initialbrd, "r");
 	FILE *file2 = fopen(evalparams, "r");
-	
+
 	// initialbrd.txt
 	while (fgets(line, sizeof(line), file1)) {
 		label = strtok(line, ":");
 		if (label != NULL) {
 			details = trimWhiteSpace(strtok(NULL, ":"));
 		}
-		if (strcmp(label,"Size") == 0) {
+		if (strcmp(label, "Size") == 0) {
 			char *x_temp = strtok(details, ",");
 			char *y_temp = strtok(NULL, ",");
 			size_x = atoi(x_temp);
@@ -157,10 +159,10 @@ void readFiles(char *initialbrd, char *evalparams) {
 			char *posInv = strtok(pos, ",");
 			while (posInv != NULL) {
 				if (strcmp(label, "White") == 0) {
-					strcpy(white_positions[count],posInv);
+					strcpy(white_positions[count], posInv);
 				}
-				else {
-					strcpy(black_positions[count],posInv);
+				else if (strcmp(label, "Black") == 0) {
+					strcpy(black_positions[count], posInv);
 				}
 				posInv = strtok(NULL, ",");
 				count++;
@@ -168,12 +170,12 @@ void readFiles(char *initialbrd, char *evalparams) {
 			if (strcmp(label, "White") == 0) {
 				white_size = count;
 			}
-			else {
+			else if (strcmp(label, "Black") == 0) {
 				black_size = count;
 			}
 		}
 	}
-	
+
 	//evalparams.txt
 	while (fgets(line, sizeof(line), file2)) {
 		label = strtok(line, ":");
@@ -183,13 +185,13 @@ void readFiles(char *initialbrd, char *evalparams) {
 		if (strcmp(label, "MaxDepth") == 0) {
 			maxDepth = atoi(details);
 		}
-		else if (strcmp(label, "MaxBoards") == 0){
+		else if (strcmp(label, "MaxBoards") == 0) {
 			maxBoards = atoi(details);
 		}
-		else if (strcmp(label, "CornerValue") == 0){
+		else if (strcmp(label, "CornerValue") == 0) {
 			cornerValue = atoi(details);
 		}
-		else if (strcmp(label, "EdgeValue") == 0){
+		else if (strcmp(label, "EdgeValue") == 0) {
 			edgeValue = atoi(details);
 		}
 		else {
@@ -199,7 +201,7 @@ void readFiles(char *initialbrd, char *evalparams) {
 
 	fclose(file1);
 	fclose(file2);
-	
+
 	//broadcast file infomation to all slaves
 	int i;
 	MPI_Bcast(&size_x, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
@@ -207,10 +209,10 @@ void readFiles(char *initialbrd, char *evalparams) {
 	MPI_Bcast(&sizeOfArray, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
 	MPI_Bcast(&black_size, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
 	MPI_Bcast(&white_size, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
-	for(i = 0;i<white_size;i++){
+	for (i = 0; i < white_size; i++) {
 		MPI_Bcast(&white_positions[i], 5, MPI_CHAR, MASTER_ID, MPI_COMM_WORLD);
 	}
-	for(i = 0;i<black_size;i++){
+	for (i = 0; i < black_size; i++) {
 		MPI_Bcast(&black_positions[i], 5, MPI_CHAR, MASTER_ID, MPI_COMM_WORLD);
 	}
 	MPI_Bcast(&maxDepth, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
@@ -221,7 +223,7 @@ void readFiles(char *initialbrd, char *evalparams) {
 	MPI_Bcast(&timeOut, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
 }
 
-void initBoard(char *board){
+void initBoard(char *board) {
 	int i;
 	for (i = 0; i < sizeOfArray; i++) {
 		board[i] = EMPTY;
@@ -267,7 +269,7 @@ bool isLegalMove(char *board, int index, int legalMoveFor) { //legal move for wh
 			if (board[tempIndex] == EMPTY) {
 				cont = false;
 			}
-			else if(board[tempIndex] == WHITE){
+			else if (board[tempIndex] == WHITE) {
 				if (legalMoveFor == BLACK) {
 					numFlipped++;
 				}
@@ -304,18 +306,18 @@ bool findAllLegalMoves(char *board, int legalMoveFor, int *lm, int *counter) {
 	int indexCounter = 0;
 	int i, slave_id;
 	int jobType = 1;
-	bool resultsRecv [1000];
+	bool resultsRecv[1000];
 	bool resultRecv;
 	MPI_Status status;
-	
-	
-	if(sizeOfArray > slaves){
+
+
+	if (sizeOfArray > slaves) {
 		//split work to slaves
 		for (slave_id = 0; slave_id < slaves; slave_id++) {
 			int startIndex = (int)(sizeOfArray * slave_id / slaves);
 			int size = (int)(sizeOfArray * (slave_id + 1) / slaves) - startIndex;
 			int arraySend[size];
-			for(i = 0; i < size; i++){
+			for (i = 0; i < size; i++) {
 				arraySend[i] = startIndex + i;
 			}
 			MPI_Send(&jobType, 1, MPI_INT, slave_id, 1000, MPI_COMM_WORLD);
@@ -329,8 +331,8 @@ bool findAllLegalMoves(char *board, int legalMoveFor, int *lm, int *counter) {
 			int startIndex = (int)(sizeOfArray * slave_id / slaves);
 			int size = (int)(sizeOfArray * (slave_id + 1) / slaves) - startIndex;
 			MPI_Recv(&resultsRecv, size, MPI_INT, slave_id, slave_id, MPI_COMM_WORLD, &status);
-			for(i = 0;i < size; i++){
-				if(resultsRecv[i]){
+			for (i = 0; i < size; i++) {
+				if (resultsRecv[i]) {
 					result = true;
 					lm[count] = indexCounter;
 					count++;
@@ -338,7 +340,8 @@ bool findAllLegalMoves(char *board, int legalMoveFor, int *lm, int *counter) {
 				indexCounter++;
 			}
 		}
-	}else{
+	}
+	else {
 		//split work to slaves
 		for (i = 0; i < sizeOfArray; i++) {
 			MPI_Send(&jobType, 1, MPI_INT, i, 1000, MPI_COMM_WORLD);
@@ -349,7 +352,7 @@ bool findAllLegalMoves(char *board, int legalMoveFor, int *lm, int *counter) {
 		//receive results from slaves
 		for (i = 0; i < sizeOfArray; i++) {
 			MPI_Recv(&resultRecv, 1, MPI_INT, i, i, MPI_COMM_WORLD, &status);
-			if(resultRecv){
+			if (resultRecv) {
 				result = true;
 				lm[count] = i;
 				count++;
@@ -379,17 +382,17 @@ void getMinimaxMoves(char *board, int *bestMoves, int *bmSize) {
 	float valuesOfLegalMoves[350];
 	int numOfLegalMoves = 0;
 	findAllLegalMoves(board, turnColor, legalMoves, &numOfLegalMoves);
-	
-	
+
+
 	//break the while loop in slave
 	int slave_id;
 	int jobType = 0;
 	for (slave_id = 0; slave_id < slaves; slave_id++) {
 		MPI_Send(&jobType, 1, MPI_INT, slave_id, 1000, MPI_COMM_WORLD);
 	}
-	
+
 	printf("%d", numOfLegalMoves);
-	
+
 	/*
 	if (turnColor == BLACK) {
 		numOfPlayerPieces = black_size;
@@ -407,7 +410,7 @@ void getMinimaxMoves(char *board, int *bestMoves, int *bmSize) {
 		copyBoardArray(board, mmBoard);
 		numOfFlipped = flipPiecesOnBoard(mmBoard, legalMoves[i], turnColor);
 
-		valuesOfLegalMoves[i] = getMin(mmBoard, FLIP(turnColor), numOfPlayerPieces + numOfFlipped + 1, 
+		valuesOfLegalMoves[i] = getMin(mmBoard, FLIP(turnColor), numOfPlayerPieces + numOfFlipped + 1,
 			numOfOppPieces - numOfFlipped, depth + 1, alpha, beta, false);
 
 		if (valuesOfLegalMoves[i] > highestValue) {
@@ -426,17 +429,17 @@ void getMinimaxMoves(char *board, int *bestMoves, int *bmSize) {
 	*bmSize = bestMovesCount; */
 }
 
-void slave(){
+void slave() {
 	int i;
 	MPI_Bcast(&size_x, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
 	MPI_Bcast(&size_y, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
 	MPI_Bcast(&sizeOfArray, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
 	MPI_Bcast(&black_size, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
 	MPI_Bcast(&white_size, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
-	for(i = 0;i<white_size;i++){
+	for (i = 0; i < white_size; i++) {
 		MPI_Bcast(&white_positions[i], 5, MPI_CHAR, MASTER_ID, MPI_COMM_WORLD);
 	}
-	for(i = 0;i<black_size;i++){
+	for (i = 0; i < black_size; i++) {
 		MPI_Bcast(&black_positions[i], 5, MPI_CHAR, MASTER_ID, MPI_COMM_WORLD);
 	}
 	MPI_Bcast(&maxDepth, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
@@ -445,60 +448,64 @@ void slave(){
 	MPI_Bcast(&edgeValue, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
 	MPI_Bcast(&bestMovesForColor, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
 	MPI_Bcast(&timeOut, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
-	
+
 	int jobType;
-	int arrayRecv [1000];
-	char boardRecv [676];
+	int arrayRecv[1000];
+	char boardRecv[676];
 	int legalMoveForRecv;
 	int sizeRecv;
 	int indexRecv;
 	bool results[1000];
 	bool result;
 	MPI_Status status;
-	
-	while(true){
+
+	while (true) {
 		MPI_Recv(&jobType, 1, MPI_INT, MPI_ANY_SOURCE, 1000, MPI_COMM_WORLD, &status);
-		if(jobType == 1){ // findAllLegalMoves
+		if (jobType == 1) { // findAllLegalMoves
 			MPI_Recv(&boardRecv, sizeOfArray, MPI_CHAR, MASTER_ID, myid, MPI_COMM_WORLD, &status);
 			MPI_Recv(&legalMoveForRecv, 1, MPI_INT, MASTER_ID, myid, MPI_COMM_WORLD, &status);
-			if(sizeOfArray > slaves){
+			if (sizeOfArray > slaves) {
 				MPI_Recv(&sizeRecv, 1, MPI_INT, MASTER_ID, myid, MPI_COMM_WORLD, &status);
 				MPI_Recv(&arrayRecv, sizeRecv, MPI_INT, MASTER_ID, myid, MPI_COMM_WORLD, &status);
-				
-				for(i = 0; i < sizeRecv; i++){
-					if(isLegalMove(boardRecv, arrayRecv[i], legalMoveForRecv)){
+
+				for (i = 0; i < sizeRecv; i++) {
+					if (isLegalMove(boardRecv, arrayRecv[i], legalMoveForRecv)) {
 						results[i] = true;
-					}else{
+					}
+					else {
 						results[i] = false;
 					}
 				}
 				MPI_Send(results, sizeRecv, MPI_INT, MASTER_ID, myid, MPI_COMM_WORLD);
-			}else{
+			}
+			else {
 				MPI_Recv(&indexRecv, 1, MPI_INT, MASTER_ID, myid, MPI_COMM_WORLD, &status);
-				if(isLegalMove(boardRecv, indexRecv, legalMoveForRecv)){
+				if (isLegalMove(boardRecv, indexRecv, legalMoveForRecv)) {
 					result = true;
 					MPI_Send(&result, 1, MPI_INT, MASTER_ID, myid, MPI_COMM_WORLD);
-				}else{
+				}
+				else {
 					result = false;
 					MPI_Send(&result, 1, MPI_INT, MASTER_ID, myid, MPI_COMM_WORLD);
 				}
 			}
-		}else{
+		}
+		else {
 			break;
 		}
 	}
 }
 
-void master(char *initialbrd, char *evalparams){
+void master(char *initialbrd, char *evalparams) {
 	char board[676];
 	readFiles(initialbrd, evalparams);
 	initBoard(board);
 	printBoard(board);
-	
+
 	int bestMoves[350];
 	int numOfBestMoves = 0;
 	getMinimaxMoves(board, bestMoves, &numOfBestMoves);
-	
+
 }
 
 /*
@@ -507,29 +514,29 @@ Using master-slave paradigm
 Master process has id = 0
 Total number of processes is 1 + number of slaves
 */
-int main (int argc, char **argv) {
+int main(int argc, char **argv) {
 	int nprocs;
-	MPI_Init(&argc,&argv);
+	MPI_Init(&argc, &argv);
 	MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 	MPI_Comm_rank(MPI_COMM_WORLD, &myid);
-	
+
 	slaves = nprocs - 1;
-	
-	if(argc != 3){
-		if(myid == MASTER_ID){
-			fprintf(stderr,"Error, invalid number of arguments!");
+
+	if (argc != 3) {
+		if (myid == MASTER_ID) {
+			fprintf(stderr, "Error, invalid number of arguments!");
 			MPI_Finalize();
 			exit(1);
 		}
 	}
-	
-	if (myid == MASTER_ID){
-		master(argv[1],argv[2]);
+
+	if (myid == MASTER_ID) {
+		master(argv[1], argv[2]);
 	}
-	else{
+	else {
 		slave();
 	}
-	
+
 	MPI_Finalize();
 	return 0;
 }

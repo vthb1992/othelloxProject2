@@ -42,7 +42,7 @@ int maxDepth, maxBoards, cornerValue, edgeValue, bestMovesForColor, timeOut;
 float getMax(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPieces, int depth, float alpha, float beta, bool isPassPrev);
 float getMin(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPieces, int depth, float alpha, float beta, bool isPassPrev);
 
-/* 
+/*
 Determines the current time
 */
 long long wall_clock_time() {
@@ -63,7 +63,7 @@ char *trimWhiteSpace(char *str) {
 	if (str == NULL) {
 		return str;
 	}
-	
+
 	// Trim leading space
 	while (isspace((unsigned char)*str)) {
 		str++;
@@ -82,7 +82,7 @@ char *trimWhiteSpace(char *str) {
 }
 
 int translateInputPosToIndex(char *pos) {
-	int letter = pos[0] - 96; 
+	int letter = pos[0] - 96;
 	int num, result;
 	if (strlen(pos) == 2) {
 		num = pos[1] - '0';
@@ -139,14 +139,14 @@ void readFiles(char *initialbrd, char *evalparams) {
 	char *label, *details;
 	FILE *file1 = fopen(initialbrd, "r");
 	FILE *file2 = fopen(evalparams, "r");
-	
+
 	// initialbrd.txt
 	while (fgets(line, sizeof(line), file1)) {
 		label = strtok(line, ":");
 		if (label != NULL) {
 			details = trimWhiteSpace(strtok(NULL, ":"));
 		}
-		if (strcmp(label,"Size") == 0) {
+		if (strcmp(label, "Size") == 0) {
 			char *x_temp = strtok(details, ",");
 			char *y_temp = strtok(NULL, ",");
 			size_x = atoi(x_temp);
@@ -170,10 +170,10 @@ void readFiles(char *initialbrd, char *evalparams) {
 			char *posInv = strtok(pos, ",");
 			while (posInv != NULL) {
 				if (strcmp(label, "White") == 0) {
-					strcpy(white_positions[count],posInv);
+					strcpy(white_positions[count], posInv);
 				}
-				else if (strcmp(label, "Black") == 0){
-					strcpy(black_positions[count],posInv);
+				else if (strcmp(label, "Black") == 0) {
+					strcpy(black_positions[count], posInv);
 				}
 				posInv = strtok(NULL, ",");
 				count++;
@@ -181,12 +181,12 @@ void readFiles(char *initialbrd, char *evalparams) {
 			if (strcmp(label, "White") == 0) {
 				white_size = count;
 			}
-			else if (strcmp(label, "Black") == 0){
+			else if (strcmp(label, "Black") == 0) {
 				black_size = count;
 			}
 		}
 	}
-	
+
 	//evalparams.txt
 	while (fgets(line, sizeof(line), file2)) {
 		label = strtok(line, ":");
@@ -196,13 +196,13 @@ void readFiles(char *initialbrd, char *evalparams) {
 		if (strcmp(label, "MaxDepth") == 0) {
 			maxDepth = atoi(details);
 		}
-		else if (strcmp(label, "MaxBoards") == 0){
+		else if (strcmp(label, "MaxBoards") == 0) {
 			maxBoards = atoi(details);
 		}
-		else if (strcmp(label, "CornerValue") == 0){
+		else if (strcmp(label, "CornerValue") == 0) {
 			cornerValue = atoi(details);
 		}
-		else if (strcmp(label, "EdgeValue") == 0){
+		else if (strcmp(label, "EdgeValue") == 0) {
 			edgeValue = atoi(details);
 		}
 		else {
@@ -212,7 +212,7 @@ void readFiles(char *initialbrd, char *evalparams) {
 
 	fclose(file1);
 	fclose(file2);
-	
+
 	//broadcast file infomation to all slaves
 	int i;
 	MPI_Bcast(&size_x, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
@@ -220,10 +220,10 @@ void readFiles(char *initialbrd, char *evalparams) {
 	MPI_Bcast(&sizeOfArray, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
 	MPI_Bcast(&black_size, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
 	MPI_Bcast(&white_size, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
-	for(i = 0;i<white_size;i++){
+	for (i = 0; i < white_size; i++) {
 		MPI_Bcast(&white_positions[i], 5, MPI_CHAR, MASTER_ID, MPI_COMM_WORLD);
 	}
-	for(i = 0;i<black_size;i++){
+	for (i = 0; i < black_size; i++) {
 		MPI_Bcast(&black_positions[i], 5, MPI_CHAR, MASTER_ID, MPI_COMM_WORLD);
 	}
 	MPI_Bcast(&maxDepth, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
@@ -234,7 +234,7 @@ void readFiles(char *initialbrd, char *evalparams) {
 	MPI_Bcast(&timeOut, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
 }
 
-void initBoard(char *board){
+void initBoard(char *board) {
 	int i;
 	for (i = 0; i < sizeOfArray; i++) {
 		board[i] = EMPTY;
@@ -280,7 +280,7 @@ bool isLegalMove(char *board, int index, int legalMoveFor) { //legal move for wh
 			if (board[tempIndex] == EMPTY) {
 				cont = false;
 			}
-			else if(board[tempIndex] == WHITE){
+			else if (board[tempIndex] == WHITE) {
 				if (legalMoveFor == BLACK) {
 					numFlipped++;
 				}
@@ -317,9 +317,9 @@ bool findAllLegalMoves(char *board, int legalMoveFor, int *lm, int *counter) {
 	int i;
 	for (i = 0; i < sizeOfArray; i++) {
 		if (isLegalMove(board, i, legalMoveFor)) {
-				result = true;
-				lm[count] = i;
-				count++;
+			result = true;
+			lm[count] = i;
+			count++;
 		}
 	}
 	*counter = count;
@@ -486,7 +486,7 @@ float evaluateBoard(char *board, int turnColor, int numOfPlayerPieces, int numOf
 			cornerHeuristicValue = (float)100 * (cornerValueForMax - cornerValueForMin) / (cornerValueForMax + cornerValueForMin);
 		}
 	}
-	
+
 	//edges captured
 	//4th evaluation function
 	float edgesHeuristicValue = 0.0;
@@ -512,7 +512,7 @@ float evaluateBoard(char *board, int turnColor, int numOfPlayerPieces, int numOf
 			edges[edgesCount] = i;
 			edgesCount++;
 		}
-		
+
 		for (i = 0; i < edgesCount; i++) {
 			if (board[edges[i]] == BLACK) {
 				if (bestMovesForColor == BLACK) {
@@ -553,7 +553,7 @@ float getMax(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPiec
 	if (depth > depthOfBoards) {
 		depthOfBoards = depth;
 	}
-	
+
 	if (numOfPlayerPieces == 0) { // lose!
 		return SMALLEST_FLOAT;
 	}
@@ -579,7 +579,7 @@ float getMax(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPiec
 	int legalMoves[350];
 	int numOfLegalMoves = 0;
 	findAllLegalMoves(board, turnColor, legalMoves, &numOfLegalMoves);
-	
+
 	//No legal moves, have to pass
 	if (numOfLegalMoves == 0) {
 		if (isPassedPrev) {
@@ -600,7 +600,7 @@ float getMax(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPiec
 		copyBoardArray(board, mmBoard);
 		numOfFlipped = flipPiecesOnBoard(mmBoard, legalMoves[i], turnColor);
 
-		curValue = getMin(mmBoard, FLIP(turnColor), numOfPlayerPieces + numOfFlipped + 1, 
+		curValue = getMin(mmBoard, FLIP(turnColor), numOfPlayerPieces + numOfFlipped + 1,
 			numOfOppPieces - numOfFlipped, depth + 1, alpha, beta, false);
 		if (curValue > maxValue) {
 			maxValue = curValue;
@@ -646,7 +646,7 @@ float getMin(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPiec
 	int legalMoves[350];
 	int numOfLegalMoves = 0;
 	findAllLegalMoves(board, turnColor, legalMoves, &numOfLegalMoves);
-	
+
 	//No legal moves, have to pass
 	if (numOfLegalMoves == 0) {
 		if (isPassedPrev) {
@@ -667,7 +667,7 @@ float getMin(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPiec
 		copyBoardArray(board, mmBoard);
 		numOfFlipped = flipPiecesOnBoard(mmBoard, legalMoves[i], turnColor);
 
-		curValue = getMax(mmBoard, FLIP(turnColor), numOfPlayerPieces - numOfFlipped, 
+		curValue = getMax(mmBoard, FLIP(turnColor), numOfPlayerPieces - numOfFlipped,
 			numOfOppPieces + numOfFlipped + 1, depth + 1, alpha, beta, false);
 		if (curValue < minValue) {
 			minValue = curValue;
@@ -717,7 +717,7 @@ void getMinimaxMoves(char *board, int *bestMoves, int *bmSize) {
 		copyBoardArray(board, mmBoard);
 		numOfFlipped = flipPiecesOnBoard(mmBoard, legalMoves[i], turnColor);
 
-		valuesOfLegalMoves[i] = getMin(mmBoard, FLIP(turnColor), numOfPlayerPieces + numOfFlipped + 1, 
+		valuesOfLegalMoves[i] = getMin(mmBoard, FLIP(turnColor), numOfPlayerPieces + numOfFlipped + 1,
 			numOfOppPieces - numOfFlipped, depth + 1, alpha, beta, false);
 
 		if (valuesOfLegalMoves[i] > highestValue) {
@@ -736,17 +736,17 @@ void getMinimaxMoves(char *board, int *bestMoves, int *bmSize) {
 	*bmSize = bestMovesCount;
 }
 
-void slave(){
+void slave() {
 	int i;
 	MPI_Bcast(&size_x, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
 	MPI_Bcast(&size_y, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
 	MPI_Bcast(&sizeOfArray, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
 	MPI_Bcast(&black_size, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
 	MPI_Bcast(&white_size, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
-	for(i = 0;i<white_size;i++){
+	for (i = 0; i < white_size; i++) {
 		MPI_Bcast(&white_positions[i], 5, MPI_CHAR, MASTER_ID, MPI_COMM_WORLD);
 	}
-	for(i = 0;i<black_size;i++){
+	for (i = 0; i < black_size; i++) {
 		MPI_Bcast(&black_positions[i], 5, MPI_CHAR, MASTER_ID, MPI_COMM_WORLD);
 	}
 	MPI_Bcast(&maxDepth, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
@@ -757,19 +757,19 @@ void slave(){
 	MPI_Bcast(&timeOut, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
 }
 
-void master(char *initialbrd, char *evalparams){
+void master(char *initialbrd, char *evalparams) {
 	char board[676];
-	
+
 	clock_t begin = clock();
 	readFiles(initialbrd, evalparams);
 	initBoard(board);
-	
+
 	int bestMoves[350];
 	int numOfBestMoves = 0;
 	getMinimaxMoves(board, bestMoves, &numOfBestMoves);
 	clock_t end = clock();
 	elapsedTimeInSec = (double)(end - begin) / CLOCKS_PER_SEC;
-	
+
 	printf("Best moves: {");
 	if (numOfBestMoves == 0) {
 		printf("na}\n");
@@ -785,7 +785,7 @@ void master(char *initialbrd, char *evalparams){
 			}
 		}
 	}
-	
+
 	printf("Number of boards assessed: %d\n", numOfBoardsAccessed);
 	printf("Depth of boards: %d\n", depthOfBoards);
 	if (isEntireSpace) {
@@ -804,29 +804,29 @@ Using master-slave paradigm
 Master process has id = 0
 Total number of processes is 1 + number of slaves
 */
-int main (int argc, char **argv) {
+int main(int argc, char **argv) {
 	int nprocs;
-	MPI_Init(&argc,&argv);
+	MPI_Init(&argc, &argv);
 	MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 	MPI_Comm_rank(MPI_COMM_WORLD, &myid);
-	
+
 	slaves = nprocs - 1;
-	
-	if(argc != 3){
-		if(myid == MASTER_ID){
-			fprintf(stderr,"Error, invalid number of arguments!");
+
+	if (argc != 3) {
+		if (myid == MASTER_ID) {
+			fprintf(stderr, "Error, invalid number of arguments!");
 			MPI_Finalize();
 			exit(1);
 		}
 	}
-	
-	if (myid == MASTER_ID){
-		master(argv[1],argv[2]);
+
+	if (myid == MASTER_ID) {
+		master(argv[1], argv[2]);
 	}
-	else{
+	else {
 		slave();
 	}
-	
+
 	MPI_Finalize();
 	return 0;
 }
