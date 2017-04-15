@@ -62,6 +62,9 @@ long long wall_clock_time() {
 #endif
 }
 
+/*
+Trim all spaces front and back from string
+*/
 char *trimWhiteSpace(char *str) {
 	char *end;
 
@@ -86,6 +89,10 @@ char *trimWhiteSpace(char *str) {
 	return str;
 }
 
+/*
+Translate a position on the board to an index used in board array
+"a1" -> 0 or h10 -> #number
+*/
 int translateInputPosToIndex(char *pos) {
 	int letter = pos[0] - 96;
 	int num, result;
@@ -100,6 +107,10 @@ int translateInputPosToIndex(char *pos) {
 	return result;
 }
 
+/*
+Translate an index used in board array back to the position on the board
+0 -> "a1" or #number -> h10
+*/
 char *translateIndexToOutputPos(int index) {
 	int num = index + 1;
 	int letter = 1;
@@ -128,8 +139,11 @@ char *translateIndexToOutputPos(int index) {
 	return result;
 }
 
+/*
+Print the current state of the board (for debugging)
+A-Z on the y-axis(top to bottom), 1-26 on the x-axis(left to right)
+*/
 void printBoard(char *board) {
-	// A-Z on the y-axis(top to bottom), 1-26 on the x-axis(left to right)
 	int a;
 	for (a = 0; a < sizeOfArray; a++) {
 		printf("%d", board[a]);
@@ -139,6 +153,9 @@ void printBoard(char *board) {
 	}
 }
 
+/*
+Read initialbrd.txt and evalparams.txt and parse them
+*/
 void readFiles(char *initialbrd, char *evalparams) {
 	char line[256];
 	char *label, *details;
@@ -239,6 +256,9 @@ void readFiles(char *initialbrd, char *evalparams) {
 	MPI_Bcast(&timeOut, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
 }
 
+/*
+Initialise board using parsed info from both .txt files
+*/
 void initBoard(char *board) {
 	int i;
 	for (i = 0; i < sizeOfArray; i++) {
@@ -252,7 +272,13 @@ void initBoard(char *board) {
 	}
 }
 
-bool isLegalMove(char *board, int index, int legalMoveFor) { //legal move for which player color white/black
+/*
+Checks if a position on the current board is a legal move for a specific player turn
+index: position on the board
+legalMoveFor: either black or white player's turn
+*/
+bool isLegalMove(char *board, int index, int legalMoveFor) {
+	//convert index into (x,y) on the board
 	int x = index + 1;
 	int y = 1;
 	while (x > size_x) {
@@ -276,11 +302,13 @@ bool isLegalMove(char *board, int index, int legalMoveFor) { //legal move for wh
 			tempx = tempx + dx;
 			tempy = tempy + dy;
 
+			//out of the board 
 			if (tempx <= 0 || tempx > size_x || tempy <= 0 || tempy > size_y) {
 				cont = false;
 				continue;
 			}
 
+			//check if pieces around can be flipped
 			int tempIndex = (tempx - 1) + (tempy - 1) * size_x;
 			if (board[tempIndex] == EMPTY) {
 				cont = false;
@@ -316,6 +344,13 @@ bool isLegalMove(char *board, int index, int legalMoveFor) { //legal move for wh
 	return false;
 }
 
+/*
+Note: Sequential version used in this program
+Checks for all positions on the board and determine if they are legal moves
+lm: stores the indexs in the array that are legal moves
+counter: stores the number of legal moves found
+result: true if there are legal moves
+*/
 bool findAllLegalMoves(char *board, int legalMoveFor, int *lm, int *counter) {
 	bool result = false;
 	int count = 0;
@@ -331,6 +366,13 @@ bool findAllLegalMoves(char *board, int legalMoveFor, int *lm, int *counter) {
 	return result;
 }
 
+/*
+Note: Not used in this program, the sequential function findAllLegalMoves is used here
+Checks for all positions on the board and determine if they are legal moves
+lm: stores the indexs in the array that are legal moves
+counter: stores the number of legal moves found
+result: true if there are legal moves
+*/
 bool findAllLegalMovesParallel(char *board, int legalMoveFor, int *lm, int *counter) {
 	int jobNo = 1;
 	bool result = false;
@@ -340,23 +382,26 @@ bool findAllLegalMovesParallel(char *board, int legalMoveFor, int *lm, int *coun
 	bool resultsRecv[1000];
 	bool resultRecv;
 	MPI_Status status;
-	
-	if(sizeOfArray > slaves){
+
+	//has to split work equally in this case
+	if (sizeOfArray > slaves) {
 		//split work to slaves
 		for (slave_id = 0; slave_id < slaves; slave_id++) {
+			//formula to split work among slaves available
 			int startIndex = (int)(sizeOfArray * slave_id / slaves);
 			int size = (int)(sizeOfArray * (slave_id + 1) / slaves) - startIndex;
 			int arraySend[size];
 			for (i = 0; i < size; i++) {
 				arraySend[i] = startIndex + i;
 			}
+			//send info needed by slaves
 			MPI_Send(&jobNo, 1, MPI_INT, slave_id, JOB_TAG, MPI_COMM_WORLD);
 			MPI_Send(&board[0], sizeOfArray, MPI_CHAR, slave_id, slave_id, MPI_COMM_WORLD);
 			MPI_Send(&legalMoveFor, 1, MPI_INT, slave_id, slave_id, MPI_COMM_WORLD);
 			MPI_Send(&size, 1, MPI_INT, slave_id, slave_id, MPI_COMM_WORLD);
 			MPI_Send(arraySend, size, MPI_INT, slave_id, slave_id, MPI_COMM_WORLD);
 		}
-		
+
 		//receive results from slaves
 		for (slave_id = 0; slave_id < slaves; slave_id++) {
 			int startIndex = (int)(sizeOfArray * slave_id / slaves);
@@ -368,11 +413,11 @@ bool findAllLegalMovesParallel(char *board, int legalMoveFor, int *lm, int *coun
 					lm[count] = indexCounter;
 					count++;
 				}
-				indexCounter++;
+				indexCounter++; //to cycle throguh the whole board array
 			}
 		}
 	}
-	else{
+	else {
 		//split work to slaves
 		for (i = 0; i < sizeOfArray; i++) {
 			MPI_Send(&jobNo, 1, MPI_INT, i, JOB_TAG, MPI_COMM_WORLD);
@@ -393,7 +438,11 @@ bool findAllLegalMovesParallel(char *board, int legalMoveFor, int *lm, int *coun
 	*counter = count;
 	return result;
 }
-// not used in the running of the program
+
+/*
+Not used in the program since a better technique is used to keep track of pieces on the board
+flipPiecesOnBoard function helps in tracking of pieces on board
+*/
 void countPieces(char *board, int *numBlack, int *numWhite) {
 	int black = 0;
 	int white = 0;
@@ -410,6 +459,9 @@ void countPieces(char *board, int *numBlack, int *numWhite) {
 	*numWhite = white;
 }
 
+/*
+To copy from the state of a board to another
+*/
 void copyBoardArray(char *from, char *to) {
 	int i;
 	for (i = 0; i < sizeOfArray; i++) {
@@ -417,9 +469,13 @@ void copyBoardArray(char *from, char *to) {
 	}
 }
 
+/*
+To flip the pieces on the current board using a specific legal move position
+Returns the total number of pieces flipped for a specific player turn
+*/
 int flipPiecesOnBoard(char *board, int legalMove, int legalMoveFor) {
 	board[legalMove] = legalMoveFor;
-
+	// convert legalMove index to (x,y) on board
 	int x = legalMove + 1;
 	int y = 1;
 	while (x > size_x) {
@@ -440,13 +496,14 @@ int flipPiecesOnBoard(char *board, int legalMove, int legalMoveFor) {
 		while (cont) {
 			tempx = tempx + dx;
 			tempy = tempy + dy;
-
+			// out of the board
 			if (tempx <= 0 || tempx > size_x || tempy <= 0 || tempy > size_y) {
 				cont = false;
 				continue;
 			}
 
 			int tempIndex = (tempx - 1) + (tempy - 1) * size_x;
+			// checks if the pieces around can be flipped
 			if (board[tempIndex] == EMPTY) {
 				cont = false;
 			}
@@ -461,6 +518,7 @@ int flipPiecesOnBoard(char *board, int legalMove, int legalMoveFor) {
 					else {
 						totalFlips += numFlipped;
 						int flipIndex;
+						// flipping done on the board
 						while (numFlipped > 0) {
 							tempx = tempx - dx;
 							tempy = tempy - dy;
@@ -482,6 +540,7 @@ int flipPiecesOnBoard(char *board, int legalMove, int legalMoveFor) {
 					else {
 						totalFlips += numFlipped;
 						int flipIndex;
+						// flipping done on the board
 						while (numFlipped > 0) {
 							tempx = tempx - dx;
 							tempy = tempy - dy;
@@ -497,6 +556,10 @@ int flipPiecesOnBoard(char *board, int legalMove, int legalMoveFor) {
 	return totalFlips;
 }
 
+/*
+To evaluate the current state of the board and return a score
+Score is calculated based on 4 different evaluation function added together
+*/
 float evaluateBoard(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPieces) {
 	//difference in pieces between player making the move and opponent
 	//1st evaluation function
@@ -611,13 +674,18 @@ float evaluateBoard(char *board, int turnColor, int numOfPlayerPieces, int numOf
 	return score;
 }
 
+/*
+Part of the alpha-beta pruning Minimax algorithm
+Return the max value
+*/
 float getMax(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPieces, int depth, float alpha, float beta, bool isPassedPrev) {
 	numOfBoardsAccessed++;
 	if (depth > depthOfBoards) {
 		depthOfBoards = depth;
 	}
 
-	if (numOfPlayerPieces == 0) { // lose!
+	// lose!
+	if (numOfPlayerPieces == 0) {
 		return SMALLEST_FLOAT;
 	}
 	else if (numOfOppPieces == 0) {
@@ -627,10 +695,10 @@ float getMax(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPiec
 	if ((numOfPlayerPieces + numOfOppPieces) == sizeOfArray) { //end game
 		return evaluateBoard(board, turnColor, numOfPlayerPieces, numOfOppPieces);
 	}
-	if (depth == maxDepth) {
+	if (depth == maxDepth) { //stops when max depth is reached
 		return evaluateBoard(board, turnColor, numOfPlayerPieces, numOfOppPieces);
 	}
-	if (numOfBoardsAccessed >= maxBoards) {
+	if (numOfBoardsAccessed >= maxBoards) { //stops when max number of boards is reached
 		return evaluateBoard(board, turnColor, numOfPlayerPieces, numOfOppPieces);
 	}
 
@@ -645,29 +713,35 @@ float getMax(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPiec
 
 	//No legal moves, have to pass
 	if (numOfLegalMoves == 0) {
+		//if the previous turn is passed as well, game ends
 		if (isPassedPrev) {
 			return evaluateBoard(board, turnColor, numOfPlayerPieces, numOfOppPieces);
 		}
+		//isPassedPrev parameter in getMin is true since the current turn is passed
 		curValue = getMin(mmBoard, FLIP(turnColor), numOfPlayerPieces, numOfOppPieces, depth + 1, alpha, beta, true);
 		if (curValue > maxValue) {
 			maxValue = curValue;
 		}
 		return maxValue;
 	}
+
 	int i;
 	for (i = 0; i < numOfLegalMoves; i++) {
+		// since the max number of boards to be accessed is reached and there are legal moves,
+		// the entire space is not check as a result
 		if (numOfBoardsAccessed >= maxBoards) {
 			isEntireSpace = false;
 			break;
 		}
 		copyBoardArray(board, mmBoard);
 		numOfFlipped = flipPiecesOnBoard(mmBoard, legalMoves[i], turnColor);
-
+		// the number of player/opp pieces is updated using numOfFlipped and tracked
 		curValue = getMin(mmBoard, FLIP(turnColor), numOfPlayerPieces + numOfFlipped + 1,
 			numOfOppPieces - numOfFlipped, depth + 1, alpha, beta, false);
 		if (curValue > maxValue) {
 			maxValue = curValue;
 		}
+		// for prunning
 		if (maxValue >= beta) {
 			return maxValue;
 		}
@@ -678,13 +752,17 @@ float getMax(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPiec
 	return maxValue;
 }
 
+/*
+Part of the alpha-beta pruning Minimax algorithm
+Return the min value
+*/
 float getMin(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPieces, int depth, float alpha, float beta, bool isPassedPrev) {
 	numOfBoardsAccessed++;
 	if (depth > depthOfBoards) {
 		depthOfBoards = depth;
 	}
-
-	if (numOfPlayerPieces == 0) { // lose!
+	// lose!
+	if (numOfPlayerPieces == 0) {
 		return SMALLEST_FLOAT;
 	}
 	else if (numOfOppPieces == 0) {
@@ -694,10 +772,10 @@ float getMin(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPiec
 	if ((numOfPlayerPieces + numOfOppPieces) == sizeOfArray) { //end game
 		return evaluateBoard(board, turnColor, numOfPlayerPieces, numOfOppPieces);
 	}
-	if (depth == maxDepth) {
+	if (depth == maxDepth) { //stops when max depth is reached
 		return evaluateBoard(board, turnColor, numOfPlayerPieces, numOfOppPieces);
 	}
-	if (numOfBoardsAccessed >= maxBoards) {
+	if (numOfBoardsAccessed >= maxBoards) { //stops when max number of boards is reached
 		return evaluateBoard(board, turnColor, numOfPlayerPieces, numOfOppPieces);
 	}
 
@@ -712,9 +790,11 @@ float getMin(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPiec
 
 	//No legal moves, have to pass
 	if (numOfLegalMoves == 0) {
+		//if the previous turn is passed as well, game ends
 		if (isPassedPrev) {
 			return evaluateBoard(board, turnColor, numOfPlayerPieces, numOfOppPieces);
 		}
+		//isPassedPrev parameter in getMax is true since the current turn is passed
 		curValue = getMax(mmBoard, FLIP(turnColor), numOfPlayerPieces, numOfOppPieces, depth + 1, alpha, beta, true);
 		if (curValue < minValue) {
 			minValue = curValue;
@@ -723,18 +803,21 @@ float getMin(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPiec
 	}
 	int i;
 	for (i = 0; i < numOfLegalMoves; i++) {
+		// since the max number of boards to be accessed is reached and there are legal moves,
+		// the entire space is not check as a result
 		if (numOfBoardsAccessed >= maxBoards) {
 			isEntireSpace = false;
 			break;
 		}
 		copyBoardArray(board, mmBoard);
 		numOfFlipped = flipPiecesOnBoard(mmBoard, legalMoves[i], turnColor);
-
+		// the number of player/opp pieces is updated using numOfFlipped and tracked
 		curValue = getMax(mmBoard, FLIP(turnColor), numOfPlayerPieces - numOfFlipped,
 			numOfOppPieces + numOfFlipped + 1, depth + 1, alpha, beta, false);
 		if (curValue < minValue) {
 			minValue = curValue;
 		}
+		// for prunning
 		if (minValue <= alpha) {
 			return minValue;
 		}
@@ -745,6 +828,10 @@ float getMin(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPiec
 	return minValue;
 }
 
+/*
+Part of the alpha-beta pruning Minimax algorithm
+The main function that starts the algorithm by calling getMin
+*/
 void getMinimaxMoves(char *board, int *bestMoves, int *bmSize) {
 	int depth = 0;
 	int numOfBoards = 0;
@@ -762,9 +849,9 @@ void getMinimaxMoves(char *board, int *bestMoves, int *bmSize) {
 	int legalMoves[350];
 	float valuesOfLegalMoves[350];
 	int numOfLegalMoves = 0;
-	
+	// get all legal moves from the current state of board and turn player
 	findAllLegalMoves(board, turnColor, legalMoves, &numOfLegalMoves);
-	
+
 	if (turnColor == BLACK) {
 		numOfPlayerPieces = black_size;
 		numOfOppPieces = white_size;
@@ -773,53 +860,61 @@ void getMinimaxMoves(char *board, int *bestMoves, int *bmSize) {
 		numOfPlayerPieces = white_size;
 		numOfOppPieces = black_size;
 	}
-	
+
+	// number of slaves used based on number of legal moves available
 	slavesReserved = numOfLegalMoves;
-	
+
 	int i;
 	int initialNumOfSlaves, slavesLeft, slave_id;
-	int jobNo = 2;
+	int jobNo = 2; // used to differentiate jobs in slaves 
 	float valueRecv;
 	int boardsAccessed, depthAccessed;
 	bool isEntireSpaceAccessed;
-	
+
 	MPI_Status status;
-	
-	if(slavesReserved > slaves){
+
+	if (slavesReserved > slaves) {
 		for (i = 0; i < numOfLegalMoves; i++) {
+			// since the max number of boards to be accessed is reached and there are legal moves,
+			// the entire space is not check as a result
 			if (numOfBoardsAccessed >= maxBoards) {
 				break;
 			}
 			copyBoardArray(board, mmBoard);
 			numOfFlipped = flipPiecesOnBoard(mmBoard, legalMoves[i], turnColor);
-			
+			// the number of player/opp pieces is updated using numOfFlipped and tracked
 			valuesOfLegalMoves[i] = getMin(mmBoard, FLIP(turnColor), numOfPlayerPieces + numOfFlipped + 1,
 				numOfOppPieces - numOfFlipped, depth + 1, alpha, beta, false);
-				
+
+			//update and get the highest value/score 	
 			if (valuesOfLegalMoves[i] > highestValue) {
 				highestValue = valuesOfLegalMoves[i];
 			}
 
-			printf("%d -> %f \n", legalMoves[i], valuesOfLegalMoves[i]);		
+			printf("%d -> %f \n", legalMoves[i], valuesOfLegalMoves[i]);
 		}
 	}
-	else{
+	else {
 		initialNumOfSlaves = slaves;
-		slavesLeft = slaves - slavesReserved;
+		slavesLeft = slaves - slavesReserved; // number of slaves not used
 		int j = slavesReserved;
 		i = 0;
-		while(j > 0){
+		//split work to slaves
+		while (j > 0) {
+			// since the max number of boards to be accessed is reached and there are legal moves,
+			// the entire space is not check as a result
 			if (numOfBoardsAccessed >= maxBoards) {
 				break;
 			}
 			copyBoardArray(board, mmBoard);
 			numOfFlipped = flipPiecesOnBoard(mmBoard, legalMoves[i], turnColor);
-			
+
 			slave_id = initialNumOfSlaves - j;
 			int numOfPlayerPiecesResult = numOfPlayerPieces + numOfFlipped + 1;
 			int numOfOppPiecesResult = numOfOppPieces - numOfFlipped;
 			int newDepth = depth + 1;
 
+			//send info needed by slaves
 			MPI_Send(&jobNo, 1, MPI_INT, slave_id, JOB_TAG, MPI_COMM_WORLD);
 			MPI_Send(&mmBoard[0], sizeOfArray, MPI_CHAR, slave_id, slave_id, MPI_COMM_WORLD);
 			MPI_Send(&turnColor, 1, MPI_INT, slave_id, slave_id, MPI_COMM_WORLD);
@@ -828,41 +923,47 @@ void getMinimaxMoves(char *board, int *bestMoves, int *bmSize) {
 			MPI_Send(&newDepth, 1, MPI_INT, slave_id, slave_id, MPI_COMM_WORLD);
 			MPI_Send(&alpha, 1, MPI_FLOAT, slave_id, slave_id, MPI_COMM_WORLD);
 			MPI_Send(&beta, 1, MPI_FLOAT, slave_id, slave_id, MPI_COMM_WORLD);
-			
+
 			i++;
 			j--;
 		}
-		
+
 		j = slavesReserved;
 		i = 0;
-		while(j > 0){
+		//receive results from slaves
+		while (j > 0) {
 			slave_id = initialNumOfSlaves - j;
 			MPI_Recv(&valueRecv, 1, MPI_FLOAT, slave_id, slave_id, MPI_COMM_WORLD, &status);
 			MPI_Recv(&boardsAccessed, 1, MPI_INT, slave_id, slave_id, MPI_COMM_WORLD, &status);
 			MPI_Recv(&depthAccessed, 1, MPI_INT, slave_id, slave_id, MPI_COMM_WORLD, &status);
 			MPI_Recv(&isEntireSpaceAccessed, 1, MPI_INT, slave_id, slave_id, MPI_COMM_WORLD, &status);
-			
+
+			//update and get the highest value/score 
 			valuesOfLegalMoves[i] = valueRecv;
 			if (valuesOfLegalMoves[i] > highestValue) {
 				highestValue = valuesOfLegalMoves[i];
 			}
-			
+
+			// sum up the number of boards accessed in each slave
 			numOfBoardsAccessed += boardsAccessed;
-			
-			if(depthAccessed > depthOfBoards){
+
+			// update the deepest depth gone by each slave
+			if (depthAccessed > depthOfBoards) {
 				depthOfBoards = depthAccessed;
 			}
-			
-			if(isEntireSpaceAccessed == false){
+
+			//check if any of the slaves did not access the entire space
+			if (isEntireSpaceAccessed == false) {
 				isEntireSpace = false;
 			}
-			
+
 			printf("%d -> %f \n", legalMoves[i], valuesOfLegalMoves[i]);
 			i++;
 			j--;
-		}  
+		}
 	}
 
+	// get all legal best moves with the highest score
 	for (i = 0; i < numOfLegalMoves; i++) {
 		if (valuesOfLegalMoves[i] == highestValue) {
 			bestMoves[bestMovesCount] = legalMoves[i];
@@ -893,7 +994,7 @@ void slave() {
 	MPI_Bcast(&edgeValue, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
 	MPI_Bcast(&bestMovesForColor, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
 	MPI_Bcast(&timeOut, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
-	
+
 	int jobNo;
 	int sizeOfArrayRecv;
 	int arrayRecv[1000];
@@ -902,7 +1003,7 @@ void slave() {
 	int indexRecv;
 	bool results[1000];
 	bool isLegalMoveResult;
-	
+
 	int turnColor;
 	int numOfPlayerPieces;
 	int numOfOppPieces;
@@ -912,19 +1013,22 @@ void slave() {
 	float value;
 	int slavesLeft;
 	MPI_Status status;
-	
-	while(true){
+
+	while (true) {
 		before = wall_clock_time();
+		// receive message about job number to be executed
 		MPI_Recv(&jobNo, 1, MPI_INT, MPI_ANY_SOURCE, JOB_TAG, MPI_COMM_WORLD, &status);
-		if(jobNo == 1){ // findAllLegalMoves
+		if (jobNo == 1) { // called by findAllLegalMoves
+			// receive the data needed for computation from Master
 			MPI_Recv(&boardRecv, sizeOfArray, MPI_CHAR, MASTER_ID, myid, MPI_COMM_WORLD, &status);
 			MPI_Recv(&legalMoveForRecv, 1, MPI_INT, MASTER_ID, myid, MPI_COMM_WORLD, &status);
-			if(sizeOfArray > slaves){
+			if (sizeOfArray > slaves) {
 				MPI_Recv(&sizeOfArrayRecv, 1, MPI_INT, MASTER_ID, myid, MPI_COMM_WORLD, &status);
 				MPI_Recv(&arrayRecv, sizeOfArrayRecv, MPI_INT, MASTER_ID, myid, MPI_COMM_WORLD, &status);
 				after = wall_clock_time();
 				comm_time += after - before;
-				
+
+				// work done in slave
 				before = wall_clock_time();
 				for (i = 0; i < sizeOfArrayRecv; i++) {
 					if (isLegalMove(boardRecv, arrayRecv[i], legalMoveForRecv)) {
@@ -936,29 +1040,34 @@ void slave() {
 				}
 				after = wall_clock_time();
 				comp_time += after - before;
-				
+
 				before = wall_clock_time();
+				// send the results back to master
 				MPI_Send(results, sizeOfArrayRecv, MPI_INT, MASTER_ID, myid, MPI_COMM_WORLD);
 				after = wall_clock_time();
 				comm_time += after - before;
 			}
-			else{
+			else {
+				// receive the data needed for computation from Master
 				MPI_Recv(&indexRecv, 1, MPI_INT, MASTER_ID, myid, MPI_COMM_WORLD, &status);
 				after = wall_clock_time();
 				comm_time += after - before;
-				
+
+				// work done in slave
 				before = wall_clock_time();
 				isLegalMoveResult = isLegalMove(boardRecv, indexRecv, legalMoveForRecv);
 				after = wall_clock_time();
 				comp_time += after - before;
-				
+
 				before = wall_clock_time();
+				// send the results back to master
 				MPI_Send(&isLegalMoveResult, 1, MPI_INT, MASTER_ID, myid, MPI_COMM_WORLD);
 				after = wall_clock_time();
 				comm_time += after - before;
 			}
 		}
-		else if(jobNo == 2){ //getMin
+		else if (jobNo == 2) { // called by getMinimaxMoves
+			// receive the data needed for computation from Master
 			MPI_Recv(&boardRecv, sizeOfArray, MPI_CHAR, MASTER_ID, myid, MPI_COMM_WORLD, &status);
 			MPI_Recv(&turnColor, 1, MPI_INT, MASTER_ID, myid, MPI_COMM_WORLD, &status);
 			MPI_Recv(&numOfPlayerPieces, 1, MPI_INT, MASTER_ID, myid, MPI_COMM_WORLD, &status);
@@ -968,14 +1077,16 @@ void slave() {
 			MPI_Recv(&beta, 1, MPI_FLOAT, MASTER_ID, myid, MPI_COMM_WORLD, &status);
 			after = wall_clock_time();
 			comm_time += after - before;
-			
+
+			// work done in slave
 			before = wall_clock_time();
 			bool isPassedPrev = false;
 			value = getMin(boardRecv, FLIP(turnColor), numOfPlayerPieces, numOfOppPieces, depth, alpha, beta, isPassedPrev);
 			after = wall_clock_time();
 			comp_time += after - before;
-			
+
 			before = wall_clock_time();
+			// send the results back to master
 			MPI_Send(&value, 1, MPI_FLOAT, MASTER_ID, myid, MPI_COMM_WORLD);
 			MPI_Send(&numOfBoardsAccessed, 1, MPI_INT, MASTER_ID, myid, MPI_COMM_WORLD);
 			MPI_Send(&depthOfBoards, 1, MPI_INT, MASTER_ID, myid, MPI_COMM_WORLD);
@@ -983,10 +1094,11 @@ void slave() {
 			after = wall_clock_time();
 			comm_time += after - before;
 		}
-		else{ //jobNo == 0, means slaves are no longer needed and no jobs left
+		else { //jobNo == 0, means slaves are no longer needed and no jobs left
 			break;
 		}
 	}
+	// print info for report and analysis
 	printf(" --- SLAVE %d: communication_time=%6.2f seconds; computation_time=%6.2f seconds\n", myid, comm_time / 1000000000.0, comp_time / 1000000000.0);
 }
 
@@ -994,7 +1106,7 @@ void master(char *initialbrd, char *evalparams) {
 	char board[676]; // initial board specified by initialbrd.txt
 	int bestMoves[350];
 	int numOfBestMoves = 0;
-	
+
 	//get the time taken to run the program
 	clock_t begin = clock();
 	readFiles(initialbrd, evalparams);
@@ -1009,7 +1121,7 @@ void master(char *initialbrd, char *evalparams) {
 	for (slave_id = 0; slave_id < slaves; slave_id++) {
 		MPI_Send(&jobType, 1, MPI_INT, slave_id, JOB_TAG, MPI_COMM_WORLD);
 	}
-	
+
 	// print details for analysis after a run
 	printf("Best moves: {");
 	if (numOfBestMoves == 0) {
@@ -1042,7 +1154,7 @@ void master(char *initialbrd, char *evalparams) {
 /*
 Using master-slave paradigm
 
-Master process has id = 0
+Master process has id = the number of processes - 1
 Total number of processes is 1 + number of slaves
 */
 int main(int argc, char **argv) {
