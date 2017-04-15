@@ -6,9 +6,6 @@
 #include <math.h>
 #include <mpi.h>
 
-int slaves;
-int myid;
-
 #define EMPTY 0
 #define BLACK 1
 #define WHITE 2
@@ -18,11 +15,16 @@ int myid;
 #define MASTER_ID slaves
 #define JOB_TAG 1001
 
-
 typedef enum { false, true } bool;
 
 // To specify the 8 different directions in (x, y) for finding legal moves and flipping pieces on board
 const int DIRECTION[8][2] = { { 1, 0 },{ 1, 1 },{ 0, 1 },{ -1, 1 },{ -1, 0 },{ -1, -1 },{ 0, -1 },{ 1, -1 } };
+
+int slaves;
+int myid;
+
+long long comm_time = 0;
+long long comp_time = 0;
 
 //for output data analysis
 int numOfBoardsAccessed = 0;
@@ -313,21 +315,6 @@ bool isLegalMove(char *board, int index, int legalMoveFor) { //legal move for wh
 	return false;
 }
 
-bool findAllLegalMovesSequential(char *board, int legalMoveFor, int *lm, int *counter) {
-	bool result = false;
-	int count = 0;
-	int i;
-	for (i = 0; i < sizeOfArray; i++) {
-		if (isLegalMove(board, i, legalMoveFor)) {
-			result = true;
-			lm[count] = i;
-			count++;
-		}
-	}
-	*counter = count;
-	return result;
-}
-
 bool findAllLegalMoves(char *board, int legalMoveFor, int *lm, int *counter) {
 	int jobNo = 1;
 	bool result = false;
@@ -353,6 +340,7 @@ bool findAllLegalMoves(char *board, int legalMoveFor, int *lm, int *counter) {
 			MPI_Send(&size, 1, MPI_INT, slave_id, slave_id, MPI_COMM_WORLD);
 			MPI_Send(arraySend, size, MPI_INT, slave_id, slave_id, MPI_COMM_WORLD);
 		}
+		
 		//receive results from slaves
 		for (slave_id = 0; slave_id < slaves; slave_id++) {
 			int startIndex = (int)(sizeOfArray * slave_id / slaves);
@@ -758,6 +746,7 @@ void getMinimaxMoves(char *board, int *bestMoves, int *bmSize) {
 	int legalMoves[350];
 	float valuesOfLegalMoves[350];
 	int numOfLegalMoves = 0;
+	
 	findAllLegalMoves(board, turnColor, legalMoves, &numOfLegalMoves);
 
 	if (turnColor == BLACK) {
@@ -797,6 +786,7 @@ void getMinimaxMoves(char *board, int *bestMoves, int *bmSize) {
 
 void slave() {
 	int i;
+	long long before, after;
 	// receive broadcast readFiles data from master to slaves
 	MPI_Bcast(&size_x, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
 	MPI_Bcast(&size_y, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
@@ -823,10 +813,11 @@ void slave() {
 	int legalMoveForRecv;
 	int indexRecv;
 	bool results[1000];
-	bool result;
+	bool isLegalMoveResult;
 	MPI_Status status;
 	
 	while(true){
+		before = wall_clock_time();
 		MPI_Recv(&jobNo, 1, MPI_INT, MPI_ANY_SOURCE, JOB_TAG, MPI_COMM_WORLD, &status);
 		if(jobNo == 1){ // findAllLegalMoves
 			MPI_Recv(&boardRecv, sizeOfArray, MPI_CHAR, MASTER_ID, myid, MPI_COMM_WORLD, &status);
@@ -834,6 +825,10 @@ void slave() {
 			if(sizeOfArray > slaves){
 				MPI_Recv(&sizeOfArrayRecv, 1, MPI_INT, MASTER_ID, myid, MPI_COMM_WORLD, &status);
 				MPI_Recv(&arrayRecv, sizeOfArrayRecv, MPI_INT, MASTER_ID, myid, MPI_COMM_WORLD, &status);
+				after = wall_clock_time();
+				comm_time += after - before;
+				
+				before = wall_clock_time();
 				for (i = 0; i < sizeOfArrayRecv; i++) {
 					if (isLegalMove(boardRecv, arrayRecv[i], legalMoveForRecv)) {
 						results[i] = true;
@@ -842,24 +837,36 @@ void slave() {
 						results[i] = false;
 					}
 				}
+				after = wall_clock_time();
+				comp_time += after - before;
+				
+				before = wall_clock_time();
 				MPI_Send(results, sizeOfArrayRecv, MPI_INT, MASTER_ID, myid, MPI_COMM_WORLD);
+				after = wall_clock_time();
+				comm_time += after - before;
 			}
 			else{
 				MPI_Recv(&indexRecv, 1, MPI_INT, MASTER_ID, myid, MPI_COMM_WORLD, &status);
-				if (isLegalMove(boardRecv, indexRecv, legalMoveForRecv)) {
-					result = true;
-					MPI_Send(&result, 1, MPI_INT, MASTER_ID, myid, MPI_COMM_WORLD);
-				}
-				else {
-					result = false;
-					MPI_Send(&result, 1, MPI_INT, MASTER_ID, myid, MPI_COMM_WORLD);
-				}
+				after = wall_clock_time();
+				comm_time += after - before;
+				
+				before = wall_clock_time();
+				isLegalMoveResult = isLegalMove(boardRecv, indexRecv, legalMoveForRecv);
+				after = wall_clock_time();
+				comp_time += after - before;
+				
+				before = wall_clock_time();
+				MPI_Send(&isLegalMoveResult, 1, MPI_INT, MASTER_ID, myid, MPI_COMM_WORLD);
+				after = wall_clock_time();
+				comm_time += after - before;
 			}
+			
 		}
 		else{ //jobNo == 0, means slaves are no longer needed and no jobs left
 			break;
 		}
 	}
+	printf(" --- SLAVE %d: communication_time=%6.2f seconds; computation_time=%6.2f seconds\n", myid, comm_time / 1000000000.0, comp_time / 1000000000.0);
 }
 
 void master(char *initialbrd, char *evalparams) {

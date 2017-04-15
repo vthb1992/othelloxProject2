@@ -214,7 +214,7 @@ void readFiles(char *initialbrd, char *evalparams) {
 	fclose(file2);
 
 	//broadcast file infomation to all slaves
-	int i;
+	/* int i;
 	MPI_Bcast(&size_x, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
 	MPI_Bcast(&size_y, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
 	MPI_Bcast(&sizeOfArray, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
@@ -231,7 +231,7 @@ void readFiles(char *initialbrd, char *evalparams) {
 	MPI_Bcast(&cornerValue, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
 	MPI_Bcast(&edgeValue, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
 	MPI_Bcast(&bestMovesForColor, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
-	MPI_Bcast(&timeOut, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
+	MPI_Bcast(&timeOut, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD); */
 }
 
 void initBoard(char *board) {
@@ -737,7 +737,7 @@ void getMinimaxMoves(char *board, int *bestMoves, int *bmSize) {
 }
 
 void slave() {
-	int i;
+	/* int i;
 	MPI_Bcast(&size_x, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
 	MPI_Bcast(&size_y, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
 	MPI_Bcast(&sizeOfArray, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
@@ -754,7 +754,7 @@ void slave() {
 	MPI_Bcast(&cornerValue, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
 	MPI_Bcast(&edgeValue, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
 	MPI_Bcast(&bestMovesForColor, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
-	MPI_Bcast(&timeOut, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
+	MPI_Bcast(&timeOut, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD); */
 }
 
 void master(char *initialbrd, char *evalparams) {
