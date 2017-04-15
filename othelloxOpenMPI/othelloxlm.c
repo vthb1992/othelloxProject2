@@ -316,7 +316,7 @@ bool isLegalMove(char *board, int index, int legalMoveFor) { //legal move for wh
 	return false;
 }
 
-bool findAllLegalMoves(char *board, int legalMoveFor, int *lm, int *counter) {
+bool findAllLegalMovesSeq(char *board, int legalMoveFor, int *lm, int *counter) {
 	bool result = false;
 	int count = 0;
 	int i;
@@ -331,7 +331,7 @@ bool findAllLegalMoves(char *board, int legalMoveFor, int *lm, int *counter) {
 	return result;
 }
 
-bool findAllLegalMovesParallel(char *board, int legalMoveFor, int *lm, int *counter) {
+bool findAllLegalMoves(char *board, int legalMoveFor, int *lm, int *counter) {
 	int jobNo = 1;
 	bool result = false;
 	int count = 0;
@@ -777,90 +777,21 @@ void getMinimaxMoves(char *board, int *bestMoves, int *bmSize) {
 	slavesReserved = numOfLegalMoves;
 	
 	int i;
-	int initialNumOfSlaves, slavesLeft, slave_id;
-	int jobNo = 2;
-	float valueRecv;
-	int boardsAccessed, depthAccessed;
-	bool isEntireSpaceAccessed;
-	
-	MPI_Status status;
-	
-	if(slavesReserved > slaves){
-		for (i = 0; i < numOfLegalMoves; i++) {
-			if (numOfBoardsAccessed >= maxBoards) {
-				break;
-			}
-			copyBoardArray(board, mmBoard);
-			numOfFlipped = flipPiecesOnBoard(mmBoard, legalMoves[i], turnColor);
-			
-			valuesOfLegalMoves[i] = getMin(mmBoard, FLIP(turnColor), numOfPlayerPieces + numOfFlipped + 1,
-				numOfOppPieces - numOfFlipped, depth + 1, alpha, beta, false);
-				
-			if (valuesOfLegalMoves[i] > highestValue) {
-				highestValue = valuesOfLegalMoves[i];
-			}
-
-			printf("%d -> %f \n", legalMoves[i], valuesOfLegalMoves[i]);		
+	for (i = 0; i < numOfLegalMoves; i++) {
+		if (numOfBoardsAccessed >= maxBoards) {
+			break;
 		}
-	}
-	else{
-		initialNumOfSlaves = slaves;
-		slavesLeft = slaves - slavesReserved;
-		int j = slavesReserved;
-		i = 0;
-		while(j > 0){
-			if (numOfBoardsAccessed >= maxBoards) {
-				break;
-			}
-			copyBoardArray(board, mmBoard);
-			numOfFlipped = flipPiecesOnBoard(mmBoard, legalMoves[i], turnColor);
-			
-			slave_id = initialNumOfSlaves - j;
-			int numOfPlayerPiecesResult = numOfPlayerPieces + numOfFlipped + 1;
-			int numOfOppPiecesResult = numOfOppPieces - numOfFlipped;
-			int newDepth = depth + 1;
-
-			MPI_Send(&jobNo, 1, MPI_INT, slave_id, JOB_TAG, MPI_COMM_WORLD);
-			MPI_Send(&mmBoard[0], sizeOfArray, MPI_CHAR, slave_id, slave_id, MPI_COMM_WORLD);
-			MPI_Send(&turnColor, 1, MPI_INT, slave_id, slave_id, MPI_COMM_WORLD);
-			MPI_Send(&numOfPlayerPiecesResult, 1, MPI_INT, slave_id, slave_id, MPI_COMM_WORLD);
-			MPI_Send(&numOfOppPiecesResult, 1, MPI_INT, slave_id, slave_id, MPI_COMM_WORLD);
-			MPI_Send(&newDepth, 1, MPI_INT, slave_id, slave_id, MPI_COMM_WORLD);
-			MPI_Send(&alpha, 1, MPI_FLOAT, slave_id, slave_id, MPI_COMM_WORLD);
-			MPI_Send(&beta, 1, MPI_FLOAT, slave_id, slave_id, MPI_COMM_WORLD);
-			
-			i++;
-			j--;
-		}
+		copyBoardArray(board, mmBoard);
+		numOfFlipped = flipPiecesOnBoard(mmBoard, legalMoves[i], turnColor);
 		
-		j = slavesReserved;
-		i = 0;
-		while(j > 0){
-			slave_id = initialNumOfSlaves - j;
-			MPI_Recv(&valueRecv, 1, MPI_FLOAT, slave_id, slave_id, MPI_COMM_WORLD, &status);
-			MPI_Recv(&boardsAccessed, 1, MPI_INT, slave_id, slave_id, MPI_COMM_WORLD, &status);
-			MPI_Recv(&depthAccessed, 1, MPI_INT, slave_id, slave_id, MPI_COMM_WORLD, &status);
-			MPI_Recv(&isEntireSpaceAccessed, 1, MPI_INT, slave_id, slave_id, MPI_COMM_WORLD, &status);
+		valuesOfLegalMoves[i] = getMin(mmBoard, FLIP(turnColor), numOfPlayerPieces + numOfFlipped + 1,
+			numOfOppPieces - numOfFlipped, depth + 1, alpha, beta, false);
 			
-			valuesOfLegalMoves[i] = valueRecv;
-			if (valuesOfLegalMoves[i] > highestValue) {
-				highestValue = valuesOfLegalMoves[i];
-			}
-			
-			numOfBoardsAccessed += boardsAccessed;
-			
-			if(depthAccessed > depthOfBoards){
-				depthOfBoards = depthAccessed;
-			}
-			
-			if(isEntireSpaceAccessed == false){
-				isEntireSpace = false;
-			}
-			
-			printf("%d -> %f \n", legalMoves[i], valuesOfLegalMoves[i]);
-			i++;
-			j--;
-		}  
+		if (valuesOfLegalMoves[i] > highestValue) {
+			highestValue = valuesOfLegalMoves[i];
+		}
+
+		printf("%d -> %f \n", legalMoves[i], valuesOfLegalMoves[i]);		
 	}
 
 	for (i = 0; i < numOfLegalMoves; i++) {
