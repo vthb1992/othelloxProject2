@@ -16,6 +16,7 @@ int myid;
 #define SMALLEST_FLOAT -1.0e10
 #define LARGEST_FLOAT 1.0e10
 #define MASTER_ID slaves
+#define JOB_TAG 1001
 
 
 typedef enum { false, true } bool;
@@ -312,7 +313,7 @@ bool isLegalMove(char *board, int index, int legalMoveFor) { //legal move for wh
 	return false;
 }
 
-bool findAllLegalMoves(char *board, int legalMoveFor, int *lm, int *counter) {
+bool findAllLegalMovesSequential(char *board, int legalMoveFor, int *lm, int *counter) {
 	bool result = false;
 	int count = 0;
 	int i;
@@ -327,6 +328,68 @@ bool findAllLegalMoves(char *board, int legalMoveFor, int *lm, int *counter) {
 	return result;
 }
 
+bool findAllLegalMoves(char *board, int legalMoveFor, int *lm, int *counter) {
+	int jobNo = 1;
+	bool result = false;
+	int count = 0;
+	int i, slave_id;
+	int indexCounter = 0;
+	bool resultsRecv[1000];
+	bool resultRecv;
+	MPI_Status status;
+	
+	if(sizeOfArray > slaves){
+		//split work to slaves
+		for (slave_id = 0; slave_id < slaves; slave_id++) {
+			int startIndex = (int)(sizeOfArray * slave_id / slaves);
+			int size = (int)(sizeOfArray * (slave_id + 1) / slaves) - startIndex;
+			int arraySend[size];
+			for (i = 0; i < size; i++) {
+				arraySend[i] = startIndex + i;
+			}
+			MPI_Send(&jobNo, 1, MPI_INT, slave_id, JOB_TAG, MPI_COMM_WORLD);
+			MPI_Send(&board[0], sizeOfArray, MPI_CHAR, slave_id, slave_id, MPI_COMM_WORLD);
+			MPI_Send(&legalMoveFor, 1, MPI_INT, slave_id, slave_id, MPI_COMM_WORLD);
+			MPI_Send(&size, 1, MPI_INT, slave_id, slave_id, MPI_COMM_WORLD);
+			MPI_Send(arraySend, size, MPI_INT, slave_id, slave_id, MPI_COMM_WORLD);
+		}
+		//receive results from slaves
+		for (slave_id = 0; slave_id < slaves; slave_id++) {
+			int startIndex = (int)(sizeOfArray * slave_id / slaves);
+			int size = (int)(sizeOfArray * (slave_id + 1) / slaves) - startIndex;
+			MPI_Recv(&resultsRecv, size, MPI_INT, slave_id, slave_id, MPI_COMM_WORLD, &status);
+			for (i = 0; i < size; i++) {
+				if (resultsRecv[i]) {
+					result = true;
+					lm[count] = indexCounter;
+					count++;
+				}
+				indexCounter++;
+			}
+		}
+	}
+	else{
+		//split work to slaves
+		for (i = 0; i < sizeOfArray; i++) {
+			MPI_Send(&jobNo, 1, MPI_INT, i, JOB_TAG, MPI_COMM_WORLD);
+			MPI_Send(&board[0], sizeOfArray, MPI_CHAR, i, i, MPI_COMM_WORLD);
+			MPI_Send(&legalMoveFor, 1, MPI_INT, i, i, MPI_COMM_WORLD);
+			MPI_Send(&i, 1, MPI_INT, i, i, MPI_COMM_WORLD);
+		}
+		//receive results from slaves
+		for (i = 0; i < sizeOfArray; i++) {
+			MPI_Recv(&resultRecv, 1, MPI_INT, i, i, MPI_COMM_WORLD, &status);
+			if (resultRecv) {
+				result = true;
+				lm[count] = i;
+				count++;
+			}
+		}
+	}
+	*counter = count;
+	return result;
+}
+// not used in the running of the program
 void countPieces(char *board, int *numBlack, int *numWhite) {
 	int black = 0;
 	int white = 0;
@@ -541,11 +604,6 @@ float evaluateBoard(char *board, int turnColor, int numOfPlayerPieces, int numOf
 	float w1 = 1.0, w2 = 5.0, w3 = (float)cornerValue, w4 = (float)edgeValue;
 	float score = w1 * diffInPiecesValue + w2 * diffInMovesValue + w3 * cornerHeuristicValue + w4 * edgesHeuristicValue;
 
-	//printf("%f -- ", diffInPiecesValue);
-	//printf("%f -- ", diffInMovesValue);
-	//printf("%f -- ", cornerHeuristicValue);
-	//printf("%f\n", edgesHeuristicValue);
-	//printBoard(board);
 	return score;
 }
 
@@ -725,7 +783,7 @@ void getMinimaxMoves(char *board, int *bestMoves, int *bmSize) {
 			highestValue = valuesOfLegalMoves[i];
 		}
 
-		//printf("%d -> %f \n", legalMoves[i], valuesOfLegalMoves[i]);
+		printf("%d -> %f \n", legalMoves[i], valuesOfLegalMoves[i]);
 	}
 
 	for (i = 0; i < numOfLegalMoves; i++) {
@@ -758,7 +816,50 @@ void slave() {
 	MPI_Bcast(&bestMovesForColor, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
 	MPI_Bcast(&timeOut, 1, MPI_INT, MASTER_ID, MPI_COMM_WORLD);
 	
+	int jobNo;
+	int sizeOfArrayRecv;
+	int arrayRecv[1000];
+	char boardRecv[676];
+	int legalMoveForRecv;
+	int indexRecv;
+	bool results[1000];
+	bool result;
+	MPI_Status status;
 	
+	while(true){
+		MPI_Recv(&jobNo, 1, MPI_INT, MPI_ANY_SOURCE, JOB_TAG, MPI_COMM_WORLD, &status);
+		if(jobNo == 1){ // findAllLegalMoves
+			MPI_Recv(&boardRecv, sizeOfArray, MPI_CHAR, MASTER_ID, myid, MPI_COMM_WORLD, &status);
+			MPI_Recv(&legalMoveForRecv, 1, MPI_INT, MASTER_ID, myid, MPI_COMM_WORLD, &status);
+			if(sizeOfArray > slaves){
+				MPI_Recv(&sizeOfArrayRecv, 1, MPI_INT, MASTER_ID, myid, MPI_COMM_WORLD, &status);
+				MPI_Recv(&arrayRecv, sizeOfArrayRecv, MPI_INT, MASTER_ID, myid, MPI_COMM_WORLD, &status);
+				for (i = 0; i < sizeOfArrayRecv; i++) {
+					if (isLegalMove(boardRecv, arrayRecv[i], legalMoveForRecv)) {
+						results[i] = true;
+					}
+					else {
+						results[i] = false;
+					}
+				}
+				MPI_Send(results, sizeOfArrayRecv, MPI_INT, MASTER_ID, myid, MPI_COMM_WORLD);
+			}
+			else{
+				MPI_Recv(&indexRecv, 1, MPI_INT, MASTER_ID, myid, MPI_COMM_WORLD, &status);
+				if (isLegalMove(boardRecv, indexRecv, legalMoveForRecv)) {
+					result = true;
+					MPI_Send(&result, 1, MPI_INT, MASTER_ID, myid, MPI_COMM_WORLD);
+				}
+				else {
+					result = false;
+					MPI_Send(&result, 1, MPI_INT, MASTER_ID, myid, MPI_COMM_WORLD);
+				}
+			}
+		}
+		else{ //jobNo == 0, means slaves are no longer needed and no jobs left
+			break;
+		}
+	}
 }
 
 void master(char *initialbrd, char *evalparams) {
@@ -774,6 +875,13 @@ void master(char *initialbrd, char *evalparams) {
 	clock_t end = clock();
 	elapsedTimeInSec = (double)(end - begin) / CLOCKS_PER_SEC;
 
+	// break while loop in slaves when there is no more jobs left
+	int slave_id;
+	int jobType = 0;
+	for (slave_id = 0; slave_id < slaves; slave_id++) {
+		MPI_Send(&jobType, 1, MPI_INT, slave_id, JOB_TAG, MPI_COMM_WORLD);
+	}
+	
 	// print details for analysis after a run
 	printf("Best moves: {");
 	if (numOfBestMoves == 0) {

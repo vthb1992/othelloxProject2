@@ -724,7 +724,7 @@ void getMinimaxMoves(char *board, int *bestMoves, int *bmSize) {
 			highestValue = valuesOfLegalMoves[i];
 		}
 
-		//printf("%d -> %f \n", legalMoves[i], valuesOfLegalMoves[i]);
+		printf("%d -> %f \n", legalMoves[i], valuesOfLegalMoves[i]);
 	}
 
 	for (i = 0; i < numOfLegalMoves; i++) {
