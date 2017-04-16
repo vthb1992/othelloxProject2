@@ -703,13 +703,13 @@ float getMax(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPiec
 		return evaluateBoard(board, turnColor, numOfPlayerPieces, numOfOppPieces);
 	}
 
-	current = clock(); 
+	current = clock();
 	double currentElapsedTimeInSec = (double)(current - begin) / CLOCKS_PER_SEC;
 	if (currentElapsedTimeInSec > (double)(timeOut - 1)) { // stops when current time is reaching timeout
 		isEntireSpace = false;
 		return evaluateBoard(board, turnColor, numOfPlayerPieces, numOfOppPieces);
 	}
-	
+
 	float maxValue = SMALLEST_FLOAT;
 	float curValue = 0.0;
 	int numOfFlipped;
@@ -786,8 +786,8 @@ float getMin(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPiec
 	if (numOfBoardsAccessed >= maxBoards) { //stops when max number of boards is reached
 		return evaluateBoard(board, turnColor, numOfPlayerPieces, numOfOppPieces);
 	}
-	
-	current = clock(); 
+
+	current = clock();
 	double currentElapsedTimeInSec = (double)(current - begin) / CLOCKS_PER_SEC;
 	if (currentElapsedTimeInSec > (double)(timeOut - 1)) { // stops when current time is reaching timeout
 		isEntireSpace = false;
