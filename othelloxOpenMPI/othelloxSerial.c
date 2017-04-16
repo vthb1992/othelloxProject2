@@ -22,6 +22,8 @@ typedef enum { false, true } bool;
 
 const int DIRECTION[8][2] = { { 1, 0 },{ 1, 1 },{ 0, 1 },{ -1, 1 },{ -1, 0 },{ -1, -1 },{ 0, -1 },{ 1, -1 } };
 
+clock_t begin, end, current;
+
 //for output data analysis
 int numOfBoardsAccessed = 0;
 int depthOfBoards = 0;
@@ -570,6 +572,13 @@ float getMax(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPiec
 	if (numOfBoardsAccessed >= maxBoards) {
 		return evaluateBoard(board, turnColor, numOfPlayerPieces, numOfOppPieces);
 	}
+	
+	current = clock(); 
+	double currentElapsedTimeInSec = (double)(current - begin) / CLOCKS_PER_SEC;
+	if(currentElapsedTimeInSec > (double)(timeOut - 1)){
+		isEntireSpace = false;
+		return evaluateBoard(board, turnColor, numOfPlayerPieces, numOfOppPieces);
+	}
 
 	float maxValue = SMALLEST_FLOAT;
 	float curValue = 0.0;
@@ -637,7 +646,14 @@ float getMin(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPiec
 	if (numOfBoardsAccessed >= maxBoards) {
 		return evaluateBoard(board, turnColor, numOfPlayerPieces, numOfOppPieces);
 	}
-
+	
+	current = clock(); 
+	double currentElapsedTimeInSec = (double)(current - begin) / CLOCKS_PER_SEC;
+	if(currentElapsedTimeInSec > (double)(timeOut - 1)){
+		isEntireSpace = false;
+		return evaluateBoard(board, turnColor, numOfPlayerPieces, numOfOppPieces);
+	}
+	
 	float minValue = LARGEST_FLOAT;
 	float curValue = 0.0;
 	int numOfFlipped;
@@ -760,14 +776,14 @@ void slave() {
 void master(char *initialbrd, char *evalparams) {
 	char board[676];
 
-	clock_t begin = clock();
+	begin = clock();
 	readFiles(initialbrd, evalparams);
 	initBoard(board);
 
 	int bestMoves[350];
 	int numOfBestMoves = 0;
 	getMinimaxMoves(board, bestMoves, &numOfBestMoves);
-	clock_t end = clock();
+	end = clock();
 	elapsedTimeInSec = (double)(end - begin) / CLOCKS_PER_SEC;
 
 	printf("Best moves: {");

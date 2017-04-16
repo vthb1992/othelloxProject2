@@ -25,6 +25,7 @@ int myid;
 
 long long comm_time = 0;
 long long comp_time = 0;
+clock_t begin, end, current;
 
 //for output data analysis
 int numOfBoardsAccessed = 0;
@@ -701,7 +702,14 @@ float getMax(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPiec
 	if (numOfBoardsAccessed >= maxBoards) { //stops when max number of boards is reached
 		return evaluateBoard(board, turnColor, numOfPlayerPieces, numOfOppPieces);
 	}
-
+	
+	current = clock(); 
+	double currentElapsedTimeInSec = (double)(current - begin) / CLOCKS_PER_SEC;
+	if (currentElapsedTimeInSec > (double)(timeOut - 1)) { // stops when current time is reaching timeout
+		isEntireSpace = false;
+		return evaluateBoard(board, turnColor, numOfPlayerPieces, numOfOppPieces);
+	}
+	
 	float maxValue = SMALLEST_FLOAT;
 	float curValue = 0.0;
 	int numOfFlipped;
@@ -776,6 +784,13 @@ float getMin(char *board, int turnColor, int numOfPlayerPieces, int numOfOppPiec
 		return evaluateBoard(board, turnColor, numOfPlayerPieces, numOfOppPieces);
 	}
 	if (numOfBoardsAccessed >= maxBoards) { //stops when max number of boards is reached
+		return evaluateBoard(board, turnColor, numOfPlayerPieces, numOfOppPieces);
+	}
+	
+	current = clock(); 
+	double currentElapsedTimeInSec = (double)(current - begin) / CLOCKS_PER_SEC;
+	if (currentElapsedTimeInSec > (double)(timeOut - 1)) { // stops when current time is reaching timeout
+		isEntireSpace = false;
 		return evaluateBoard(board, turnColor, numOfPlayerPieces, numOfOppPieces);
 	}
 
@@ -1027,11 +1042,11 @@ void master(char *initialbrd, char *evalparams) {
 	int numOfBestMoves = 0;
 
 	//get the time taken to run the program
-	clock_t begin = clock();
+	begin = clock();
 	readFiles(initialbrd, evalparams);
 	initBoard(board);
 	getMinimaxMoves(board, bestMoves, &numOfBestMoves);
-	clock_t end = clock();
+	end = clock();
 	elapsedTimeInSec = (double)(end - begin) / CLOCKS_PER_SEC;
 
 	// break while loop in slaves when there is no more jobs left
